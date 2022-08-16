@@ -10,7 +10,6 @@
   "license": "ISC",
   "dependencies": {
     "fb-watchman": "^2.0.1",
-    "http-server": "^14.1.1",
     "ws": "^8.8.1"
   }
 }

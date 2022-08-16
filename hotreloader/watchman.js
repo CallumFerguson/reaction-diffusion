@@ -1,5 +1,5 @@
 const {exec} = require('child_process');
-const wasmPack = require("./wasm-pack.js");
+const wasmPack = require("./compile-wasm.js");
 
 var watchman = require('fb-watchman');
 var client = new watchman.Client();

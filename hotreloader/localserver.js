@@ -1,11 +1,18 @@
 // https://stackoverflow.com/questions/16333790/node-js-quick-file-server-static-files-over-http?page=1&tab=scoredesc#tab-top
-var http = require('http');
-var fs = require('fs');
-var path = require('path');
+// var http = require('http');
+// var fs = require('fs');
+// var path = require('path');
 
-function startServer() {
+import * as http from "http";
+import * as fs from "fs";
+import * as path from "path";
+import * as url from 'url';
+
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+
+export default function startServer() {
     http.createServer(function (request, response) {
-        if(request.url === "/") {
+        if (request.url === "/") {
             request.url = "/src/";
         }
         var filePath = path.join(__dirname, "..", request.url);
@@ -41,7 +48,7 @@ function startServer() {
             if (error) {
                 if (error.code == 'ENOENT') {
                     fs.readFile('./404.html', function (error, content) {
-                        if(error) {
+                        if (error) {
                             content = "404";
                         }
                         response.writeHead(200, {'Content-Type': contentType});
@@ -62,4 +69,4 @@ function startServer() {
     console.log('Server running at http://127.0.0.1:3000');
 }
 
-module.exports = {startServer};
+// module.exports = {startServer};

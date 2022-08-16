@@ -1,6 +1,6 @@
-const {exec} = require('child_process');
+import {exec} from "child_process";
 
-function compileWasm(done) {
+export default function compileWasm(done) {
     exec("wasm-pack build --target web", (err, stdout, stderr) => {
         if (err) {
             console.log("could not execute command: ", err);
@@ -12,10 +12,9 @@ function compileWasm(done) {
         if (stderr) {
             console.log(stderr);
         }
-        if(done) {
+        if (done) {
             done();
         }
     });
 }
 
-module.exports = {compileWasm};

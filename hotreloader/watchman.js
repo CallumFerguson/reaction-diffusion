@@ -1,11 +1,12 @@
-const compileWasm = require("./compile-wasm.js");
+import compileWasm from "./compile-wasm.js";
 
-var watchman = require('fb-watchman');
+import * as watchman from "fb-watchman";
+
 var client = new watchman.Client();
 
 var dir_of_interest = "C:\\Users\\Callum\\Documents\\git\\rust-project\\src";
 
-function watch() {
+export default function watch(change) {
     client.capabilityCheck({optional: [], required: ['relative_root']},
         function (error, resp) {
             if (error) {
@@ -36,19 +37,19 @@ function watch() {
 
                     console.log('watching for changes to *.rs in ', resp.watch,
                         ' relative_path', resp.relative_path);
-                    make_time_constrained_subscription(client, resp.watch, resp.relative_path);
+                    make_time_constrained_subscription(client, resp.watch, resp.relative_path, change);
                 });
         });
 }
 
-function make_time_constrained_subscription(client, watch, relative_path) {
+function make_time_constrained_subscription(client, watch, relative_path, change) {
     client.command(['clock', watch], function (error, resp) {
         if (error) {
             console.error('Failed to query clock:', error);
             return;
         }
 
-        sub = {
+        const sub = {
             // Match any `.js` file in the dir_of_interest
             expression: ["allof", ["match", "*.rs"]],
             // Which fields we're interested in
@@ -76,7 +77,11 @@ function make_time_constrained_subscription(client, watch, relative_path) {
             if (resp.files.length === 0) return;
 
             console.log("compiling wasm...");
-            compileWasm.compileWasm();
+            compileWasm(() => {
+                if(change) {
+                    change();
+                }
+            });
 
             // resp.files.forEach(function (file) {
             //     // convert Int64 instance to javascript integer
@@ -102,5 +107,3 @@ function make_time_constrained_subscription(client, watch, relative_path) {
         });
     });
 }
-
-module.exports = {watch};

@@ -3,8 +3,53 @@
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
 </head>
 <body>
+<script>
+    function connect(stopped) {
+        return new Promise((resolve, reject) => {
+            let socket = new WebSocket("ws://127.0.0.1:3001");
+
+            socket.onopen = function (e) {
+                console.log("[open] Connected to hot reloader");
+            };
+
+            socket.onmessage = function (event) {
+                if (event && event.data === "change") {
+                    location.reload();
+                }
+            };
+
+            socket.onclose = function (event) {
+                if (event.wasClean) {
+                    console.log(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+                } else {
+                    // e.g. server process killed or network down
+                    // event.code is usually 1006 in this case
+                    console.log('[close] Connection died');
+                    console.log(event);
+                }
+                resolve();
+            };
+
+            socket.onerror = function (error) {
+                console.log(`[error] socket error`);
+                console.log(error);
+                resolve();
+            };
+        });
+    }
+
+    async function keepConnecting() {
+        while(true) {
+            console.log("connecting to hot reloader");
+            await connect();
+        }
+    }
+
+    keepConnecting();
+</script>
 <script type="module">
     import init from '../pkg/rustproject.js';
+
     init();
 </script>
 </body>

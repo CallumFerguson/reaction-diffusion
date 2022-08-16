@@ -6,12 +6,11 @@ var path = require('path');
 function startServer() {
     http.createServer(function (request, response) {
         var filePath = path.join(__dirname, "..", request.url);
-        if (request.url === '/')
+        if (path.extname(filePath) === "")
             filePath = path.join(filePath, "index.html");
 
-        var extname = path.extname(filePath);
         var contentType = 'text/html';
-        switch (extname) {
+        switch (path.extname(filePath)) {
             case '.js':
                 contentType = 'text/javascript';
                 break;
@@ -39,6 +38,9 @@ function startServer() {
             if (error) {
                 if (error.code == 'ENOENT') {
                     fs.readFile('./404.html', function (error, content) {
+                        if(error) {
+                            content = "404";
+                        }
                         response.writeHead(200, {'Content-Type': contentType});
                         response.end(content, 'utf-8');
                     });

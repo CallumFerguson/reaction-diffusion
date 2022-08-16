@@ -9,15 +9,20 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
+js-sys = "0.3.59"
 wasm-bindgen = "0.2.82"
+console_error_panic_hook = "0.1.7"
 
 [dependencies.web-sys]
 version = "0.3.4"
 features = [
     'Document',
     'Element',
-    'HtmlElement',
-    'Node',
+    'HtmlCanvasElement',
+    'WebGlBuffer',
+    'WebGlVertexArrayObject',
+    'WebGl2RenderingContext',
+    'WebGlProgram',
+    'WebGlShader',
     'Window',
-    'console'
 ]

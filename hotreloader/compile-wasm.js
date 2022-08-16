@@ -12,7 +12,9 @@ function compileWasm(done) {
         if (stderr) {
             console.log(stderr);
         }
-        done();
+        if(done) {
+            done();
+        }
     });
 }
 

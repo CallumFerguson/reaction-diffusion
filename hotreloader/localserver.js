@@ -5,6 +5,9 @@ var path = require('path');
 
 function startServer() {
     http.createServer(function (request, response) {
+        if(request.url === "/") {
+            request.url = "/src/";
+        }
         var filePath = path.join(__dirname, "..", request.url);
         if (path.extname(filePath) === "")
             filePath = path.join(filePath, "index.html");

@@ -1,5 +1,4 @@
-const {exec} = require('child_process');
-const wasmPack = require("./compile-wasm.js");
+const compileWasm = require("./compile-wasm.js");
 
 var watchman = require('fb-watchman');
 var client = new watchman.Client();
@@ -83,19 +82,9 @@ function make_subscription(client, watch, relative_path) {
         if (resp.subscription !== 'mysubscription') return;
 
         console.log("compiling wasm...");
+        // compileWasm.compileWasm();
 
-        exec("wasm-pack build --target web", (err, stdout, stderr) => {
-            if (err) {
-                console.log("could not execute command: ", err);
-                return;
-            }
-            if (stdout) {
-                console.log(stdout);
-            }
-            if (stderr) {
-                console.log(stderr);
-            }
-        });
+        console.log(resp.files.length);
 
         // resp.files.forEach(function (file) {
         //     // convert Int64 instance to javascript integer

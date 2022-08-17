@@ -11,8 +11,8 @@ pub fn start() -> Result<(), JsValue> {
     let body = document.body().expect("document should have a body");
 
     let canvas = document.create_element("canvas")?;
-    canvas.set_attribute("width", "500");
-    canvas.set_attribute("height", "500");
+    canvas.set_attribute("width", "500")?;
+    canvas.set_attribute("height", "500")?;
     body.append_child(&canvas)?;
 
     let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;

@@ -8,8 +8,11 @@
         return new Promise((resolve, reject) => {
             let socket = new WebSocket("ws://127.0.0.1:3001");
 
+            let connected = false;
+
             socket.onopen = function (e) {
-                console.log("[open] Connected to hot reloader");
+                console.log("Connected to hot reloader.");
+                connected = true;
             };
 
             socket.onmessage = function (event) {
@@ -19,28 +22,24 @@
             };
 
             socket.onclose = function (event) {
-                if (event.wasClean) {
-                    console.log(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
-                } else {
-                    // e.g. server process killed or network down
-                    // event.code is usually 1006 in this case
-                    console.log('[close] Connection died');
-                    console.log(event);
+                if(connected) {
+                    console.log("Lost connection to hot reloader. Attempting to reconnect...")
+                    // console.log(event);
                 }
                 resolve();
             };
 
             socket.onerror = function (error) {
-                console.log(`[error] socket error`);
-                console.log(error);
+                // console.log(`[error] socket error`);
+                // console.log(error);
                 resolve();
             };
         });
     }
 
     async function keepConnecting() {
+        console.log("Attempting to connect to hot reloader...");
         while(true) {
-            console.log("connecting to hot reloader");
             await connect();
         }
     }

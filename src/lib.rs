@@ -5,6 +5,10 @@ use console_error_panic_hook::hook;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+macro_rules! console_log {
+    ($($t:tt)*) => (web_sys::console::log_1(&format_args!($($t)*).to_string().into()))
+}
+
 fn request_animation_frame(window: &Rc<web_sys::Window>, f: &Closure<dyn FnMut()>) {
     window
         .request_animation_frame(f.as_ref().unchecked_ref())
@@ -14,6 +18,8 @@ fn request_animation_frame(window: &Rc<web_sys::Window>, f: &Closure<dyn FnMut()
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
     std::panic::set_hook(Box::new(hook));
+
+    console_log!("starting webgl");
 
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().unwrap();

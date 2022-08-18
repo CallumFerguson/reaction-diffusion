@@ -4,6 +4,7 @@ export default function compileWasm(done) {
     exec("wasm-pack build --target web", (err, stdout, stderr) => {
         if (err) {
             console.log("could not execute command: ", err);
+            done();
             return;
         }
         if (stdout) {

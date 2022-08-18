@@ -2,12 +2,21 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader};
 use console_error_panic_hook::hook;
+use std::cell::RefCell;
+use std::rc::Rc;
+
+fn request_animation_frame(window: &Rc<web_sys::Window>, f: &Closure<dyn FnMut()>) {
+    window
+        .request_animation_frame(f.as_ref().unchecked_ref())
+        .expect("should register `requestAnimationFrame` OK");
+}
 
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
     std::panic::set_hook(Box::new(hook));
 
-    let document = web_sys::window().unwrap().document().unwrap();
+    let window = web_sys::window().expect("no global `window` exists");
+    let document = window.document().unwrap();
     let body = document.body().expect("document should have a body");
 
     let canvas = document.create_element("canvas")?;
@@ -22,15 +31,44 @@ pub fn start() -> Result<(), JsValue> {
         .unwrap()
         .dyn_into::<WebGl2RenderingContext>()?;
 
+    let f = Rc::new(RefCell::new(None));
+    let g = f.clone();
+
+    let windowrc = Rc::new(window);
+    let windowrc2 = Rc::clone(&windowrc);
+
+    let mut i = 0;
+    *g.borrow_mut() = Some(Closure::new(move || {
+        if i > 300 {
+            // body.set_text_content(Some("All done!"));
+
+            // Drop our handle to this closure so that it will get cleaned
+            // up once we return.
+            let _ = f.borrow_mut().take();
+            return;
+        }
+
+        // Set the body's text content to how many times this
+        // requestAnimationFrame callback has fired.
+        i += 1;
+        // let text = format!("requestAnimationFrame has been called {} times.", i);
+        // body.set_text_content(Some(&text));
+
+        // Schedule ourself for another requestAnimationFrame callback.
+        request_animation_frame(&windowrc2, f.borrow().as_ref().unwrap());
+    }));
+
+    request_animation_frame(&windowrc, g.borrow().as_ref().unwrap());
+
     let vert_shader = compile_shader(
         &context,
         WebGl2RenderingContext::VERTEX_SHADER,
         r##"#version 300 es
- 
+
         in vec4 position;
 
         void main() {
-        
+
             gl_Position = position;
         }
         "##,
@@ -40,10 +78,10 @@ pub fn start() -> Result<(), JsValue> {
         &context,
         WebGl2RenderingContext::FRAGMENT_SHADER,
         r##"#version 300 es
-    
+
         precision highp float;
         out vec4 outColor;
-        
+
         void main() {
             outColor = vec4(1, 1, 1, 1);
         }

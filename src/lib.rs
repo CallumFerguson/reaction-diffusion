@@ -37,35 +37,6 @@ pub fn start() -> Result<(), JsValue> {
         .unwrap()
         .dyn_into::<WebGl2RenderingContext>()?;
 
-    let f = Rc::new(RefCell::new(None));
-    let g = f.clone();
-
-    let windowrc = Rc::new(window);
-    let windowrc2 = Rc::clone(&windowrc);
-
-    let mut i = 0;
-    *g.borrow_mut() = Some(Closure::new(move || {
-        if i > 300 {
-            // body.set_text_content(Some("All done!"));
-
-            // Drop our handle to this closure so that it will get cleaned
-            // up once we return.
-            let _ = f.borrow_mut().take();
-            return;
-        }
-
-        // Set the body's text content to how many times this
-        // requestAnimationFrame callback has fired.
-        i += 1;
-        // let text = format!("requestAnimationFrame has been called {} times.", i);
-        // body.set_text_content(Some(&text));
-
-        // Schedule ourself for another requestAnimationFrame callback.
-        request_animation_frame(&windowrc2, f.borrow().as_ref().unwrap());
-    }));
-
-    request_animation_frame(&windowrc, g.borrow().as_ref().unwrap());
-
     let vert_shader = compile_shader(
         &context,
         WebGl2RenderingContext::VERTEX_SHADER,
@@ -96,7 +67,7 @@ pub fn start() -> Result<(), JsValue> {
     let program = link_program(&context, &vert_shader, &frag_shader)?;
     context.use_program(Some(&program));
 
-    let vertices: [f32; 9] = [-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
+    let mut vertices: [f32; 9] = [-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
 
     let position_attribute_location = context.get_attrib_location(&program, "position");
     let buffer = context.create_buffer().ok_or("Failed to create buffer")?;
@@ -116,9 +87,20 @@ pub fn start() -> Result<(), JsValue> {
         context.buffer_data_with_array_buffer_view(
             WebGl2RenderingContext::ARRAY_BUFFER,
             &positions_array_buf_view,
-            WebGl2RenderingContext::STATIC_DRAW,
+            WebGl2RenderingContext::DYNAMIC_DRAW,
         );
     }
+
+    // unsafe {
+    //     vertices[0] = -1.0;
+    //     let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
+    //
+    //     context.buffer_sub_data_with_i32_and_array_buffer_view(
+    //         WebGl2RenderingContext::ARRAY_BUFFER,
+    //         0,
+    //         &positions_array_buf_view,
+    //     );
+    // }
 
     let vao = context
         .create_vertex_array()
@@ -131,7 +113,32 @@ pub fn start() -> Result<(), JsValue> {
     context.bind_vertex_array(Some(&vao));
 
     let vert_count = (vertices.len() / 3) as i32;
-    draw(&context, vert_count);
+    // draw(&context, vert_count);
+
+    let f = Rc::new(RefCell::new(None));
+    let g = f.clone();
+    let windowrc = Rc::new(window);
+    let windowrc2 = Rc::clone(&windowrc);
+    *g.borrow_mut() = Some(Closure::new(move || {
+        context.bind_vertex_array(Some(&vao));
+        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
+
+        unsafe {
+            vertices[0] += 0.001;
+            let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
+
+            context.buffer_sub_data_with_i32_and_array_buffer_view(
+                WebGl2RenderingContext::ARRAY_BUFFER,
+                0,
+                &positions_array_buf_view,
+            );
+        }
+
+        draw(&context, vert_count);
+
+        request_animation_frame(&windowrc2, f.borrow().as_ref().unwrap());
+    }));
+    request_animation_frame(&windowrc, g.borrow().as_ref().unwrap());
 
     Ok(())
 }

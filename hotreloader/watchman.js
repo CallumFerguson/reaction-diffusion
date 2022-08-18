@@ -1,3 +1,5 @@
+// https://facebook.github.io/watchman/docs/nodejs.html
+
 import compileWasm from "./compile-wasm.js";
 
 import * as watchman from "fb-watchman";
@@ -72,38 +74,34 @@ function make_time_constrained_subscription(client, watch, relative_path, change
                 // console.log('subscription ' + resp.subscribe + ' established');
             });
 
-        client.on('subscription', function (resp) {
+        let compileInProgress = false;
+        let skippedCompile = false;
+        let lastResp = null;
+
+        let subscription = (resp) => {
+            lastResp = resp;
             if (resp.subscription !== 'mysubscription') return;
             if (resp.files.length === 0) return;
 
+            if (compileInProgress) {
+                console.log("wasm compile in progress. waiting for it to finish before compiling...");
+                skippedCompile = true;
+                return;
+            }
             console.log("compiling wasm...");
+            compileInProgress = true;
             compileWasm(() => {
-                if(change) {
+                compileInProgress = false;
+                if (change) {
                     change();
                 }
+                if(skippedCompile) {
+                    skippedCompile = false;
+                    subscription(lastResp);
+                }
             });
+        };
 
-            // resp.files.forEach(function (file) {
-            //     // convert Int64 instance to javascript integer
-            //     const mtime_ms = +file.mtime_ms;
-            //
-            //     // console.log('file changed: ' + file.name, mtime_ms);
-            //
-            //
-            //     // wasm-pack build --target web
-            //     exec("echo test", (err, stdout, stderr) => {
-            //         if (err) {
-            //             console.log("could not execute command: ", err);
-            //             return;
-            //         }
-            //         if (stdout) {
-            //             console.log(stdout);
-            //         }
-            //         if (stderr) {
-            //             console.log(stderr);
-            //         }
-            //     });
-            // });
-        });
+        client.on('subscription', subscription);
     });
 }

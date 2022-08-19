@@ -120,17 +120,16 @@ pub fn start() -> Result<(), JsValue> {
     let windowrc = Rc::new(window);
     let windowrc2 = Rc::clone(&windowrc);
     *g.borrow_mut() = Some(Closure::new(move || {
-        context.bind_vertex_array(Some(&vao));
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
-
         unsafe {
             vertices[0] += 0.001;
             let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
 
-            context.buffer_sub_data_with_i32_and_array_buffer_view(
+            context.buffer_sub_data_with_i32_and_array_buffer_view_and_src_offset_and_length(
                 WebGl2RenderingContext::ARRAY_BUFFER,
                 0,
                 &positions_array_buf_view,
+                0,
+                0
             );
         }
 

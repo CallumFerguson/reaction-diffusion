@@ -9,12 +9,6 @@ macro_rules! console_log {
     ($($t:tt)*) => (web_sys::console::log_1(&format_args!($($t)*).to_string().into()))
 }
 
-fn request_animation_frame(window: &Rc<web_sys::Window>, f: &Closure<dyn FnMut()>) {
-    window
-        .request_animation_frame(f.as_ref().unchecked_ref())
-        .expect("should register `requestAnimationFrame` OK");
-}
-
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
     std::panic::set_hook(Box::new(hook));
@@ -91,17 +85,6 @@ pub fn start() -> Result<(), JsValue> {
         );
     }
 
-    // unsafe {
-    //     vertices[0] = -1.0;
-    //     let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
-    //
-    //     context.buffer_sub_data_with_i32_and_array_buffer_view(
-    //         WebGl2RenderingContext::ARRAY_BUFFER,
-    //         0,
-    //         &positions_array_buf_view,
-    //     );
-    // }
-
     let vao = context
         .create_vertex_array()
         .ok_or("Could not create vertex array object")?;
@@ -113,13 +96,14 @@ pub fn start() -> Result<(), JsValue> {
     context.bind_vertex_array(Some(&vao));
 
     let vert_count = (vertices.len() / 3) as i32;
-    // draw(&context, vert_count);
 
-    let f = Rc::new(RefCell::new(None));
-    let g = f.clone();
-    let windowrc = Rc::new(window);
-    let windowrc2 = Rc::clone(&windowrc);
-    *g.borrow_mut() = Some(Closure::new(move || {
+    let animation_loop_closure = Rc::new(RefCell::new(None::<Closure::<dyn FnMut()>>));
+    let animation_loop_closure_outer = animation_loop_closure.clone();
+
+    let window = Rc::new(window);
+    let window_outer = Rc::clone(&window);
+
+    *animation_loop_closure_outer.borrow_mut() = Some(Closure::<dyn FnMut()>::new(move || {
         unsafe {
             vertices[0] += 0.001;
             let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
@@ -135,9 +119,9 @@ pub fn start() -> Result<(), JsValue> {
 
         draw(&context, vert_count);
 
-        request_animation_frame(&windowrc2, f.borrow().as_ref().unwrap());
+        window.request_animation_frame(animation_loop_closure.borrow().as_ref().unwrap().as_ref().unchecked_ref()).expect("request_animation_frame failed");
     }));
-    request_animation_frame(&windowrc, g.borrow().as_ref().unwrap());
+    window_outer.request_animation_frame(animation_loop_closure_outer.borrow().as_ref().unwrap().as_ref().unchecked_ref()).expect("request_animation_frame failed");
 
     Ok(())
 }

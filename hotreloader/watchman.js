@@ -37,7 +37,7 @@ export default function watch(change) {
                     // tree, so it is very important to record the `relative_path`
                     // returned in resp
 
-                    console.log('watching for changes to *.rs in ', resp.watch,
+                    console.log('watching for changes to * in ', resp.watch,
                         ' relative_path', resp.relative_path);
                     make_time_constrained_subscription(client, resp.watch, resp.relative_path, change);
                 });
@@ -53,7 +53,7 @@ function make_time_constrained_subscription(client, watch, relative_path, change
 
         const sub = {
             // Match any `.js` file in the dir_of_interest
-            expression: ["allof", ["match", "*.rs"]],
+            expression: ["allof", ["match", "*"]],
             // Which fields we're interested in
             fields: ["name", "size", "exists", "type"],
             // add our time constraint

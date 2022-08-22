@@ -4,6 +4,7 @@ use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader};
 use console_error_panic_hook::hook;
 use std::cell::RefCell;
 use std::rc::Rc;
+use glam::{Vec3, Mat4};
 
 macro_rules! console_log {
     ($($t:tt)*) => (web_sys::console::log_1(&format_args!($($t)*).to_string().into()))
@@ -34,34 +35,27 @@ pub fn start() -> Result<(), JsValue> {
     let vert_shader = compile_shader(
         &context,
         WebGl2RenderingContext::VERTEX_SHADER,
-        r##"#version 300 es
-
-        in vec4 position;
-
-        void main() {
-
-            gl_Position = position;
-        }
-        "##,
+        include_str!("shader.vert"),
     )?;
 
     let frag_shader = compile_shader(
         &context,
         WebGl2RenderingContext::FRAGMENT_SHADER,
-        r##"#version 300 es
-
-        precision highp float;
-        out vec4 outColor;
-
-        void main() {
-            outColor = vec4(1, 1, 1, 1);
-        }
-        "##,
+        include_str!("shader.frag"),
     )?;
     let program = link_program(&context, &vert_shader, &frag_shader)?;
     context.use_program(Some(&program));
 
-    let mut vertices: [f32; 9] = [-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
+    // let mut vertices: [f32; 9] = [-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
+    // let mut vertices: Vec<i32> = vec![-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
+    let mut vertices: Vec<i32> = vec![];
+
+    for x in 0..100 {
+        for y in 0..100 {
+            vertices.push(x);
+            vertices.push(y);
+        }
+    }
 
     let position_attribute_location = context.get_attrib_location(&program, "position");
     let buffer = context.create_buffer().ok_or("Failed to create buffer")?;
@@ -76,12 +70,13 @@ pub fn start() -> Result<(), JsValue> {
     // As a result, after `Float32Array::view` we have to be very careful not to
     // do any memory allocations before it's dropped.
     unsafe {
-        let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
+        // let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
+        let positions_array_buf_view = js_sys::Int32Array::view(&vertices);
 
         context.buffer_data_with_array_buffer_view(
             WebGl2RenderingContext::ARRAY_BUFFER,
             &positions_array_buf_view,
-            WebGl2RenderingContext::DYNAMIC_DRAW,
+            WebGl2RenderingContext::STREAM_DRAW,
         );
     }
 
@@ -90,12 +85,12 @@ pub fn start() -> Result<(), JsValue> {
         .ok_or("Could not create vertex array object")?;
     context.bind_vertex_array(Some(&vao));
 
-    context.vertex_attrib_pointer_with_i32(0, 3, WebGl2RenderingContext::FLOAT, false, 0, 0);
+    context.vertex_attrib_pointer_with_i32(0, 2, WebGl2RenderingContext::INT, false, 0, 0);
     context.enable_vertex_attrib_array(position_attribute_location as u32);
 
     context.bind_vertex_array(Some(&vao));
 
-    let vert_count = (vertices.len() / 3) as i32;
+    // let projection = Mat4::orthographic_rh_gl(0.0, 100.0, 0.0, 100.0, -1.0, 1.0);
 
     let animation_loop_closure = Rc::new(RefCell::new(None::<Closure::<dyn FnMut()>>));
     let animation_loop_closure_outer = animation_loop_closure.clone();
@@ -104,19 +99,22 @@ pub fn start() -> Result<(), JsValue> {
     let window_outer = Rc::clone(&window);
 
     *animation_loop_closure_outer.borrow_mut() = Some(Closure::<dyn FnMut()>::new(move || {
-        unsafe {
-            vertices[0] += 0.001;
-            let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
+        // unsafe {
+        //     // vertices[0] += 1;
+        //     // vertices[1] += 1;
+        //     // let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
+        //     let positions_array_buf_view = js_sys::Int32Array::view(&vertices);
+        //
+        //     context.buffer_sub_data_with_i32_and_array_buffer_view_and_src_offset_and_length(
+        //         WebGl2RenderingContext::ARRAY_BUFFER,
+        //         0,
+        //         &positions_array_buf_view,
+        //         0,
+        //         vertices.len() as u32
+        //     );
+        // }
 
-            context.buffer_sub_data_with_i32_and_array_buffer_view_and_src_offset_and_length(
-                WebGl2RenderingContext::ARRAY_BUFFER,
-                0,
-                &positions_array_buf_view,
-                0,
-                0
-            );
-        }
-
+        let vert_count = (vertices.len() / 2) as i32;
         draw(&context, vert_count);
 
         window.request_animation_frame(animation_loop_closure.borrow().as_ref().unwrap().as_ref().unchecked_ref()).expect("request_animation_frame failed");
@@ -130,7 +128,7 @@ fn draw(context: &WebGl2RenderingContext, vert_count: i32) {
     context.clear_color(0.0, 0.0, 0.0, 1.0);
     context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
-    context.draw_arrays(WebGl2RenderingContext::TRIANGLES, 0, vert_count);
+    context.draw_arrays(WebGl2RenderingContext::POINTS, 0, vert_count);
 }
 
 pub fn compile_shader(

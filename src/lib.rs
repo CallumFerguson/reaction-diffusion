@@ -3,11 +3,16 @@ use wasm_bindgen::JsCast;
 use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader};
 use console_error_panic_hook::hook;
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::rc::Rc;
-use glam::{Vec3, Mat4};
+use glam::Mat4;
+
+// macro_rules! console_log {
+//     ($($t:tt)*) => (web_sys::console::log_1(&format_args!($($t)*).to_string().into()))
+// }
 
 macro_rules! console_log {
-    ($($t:tt)*) => (web_sys::console::log_1(&format_args!($($t)*).to_string().into()))
+    ($($t:tt)*) => (web_sys::console::log_1(&format!($($t)*).into()))
 }
 
 #[wasm_bindgen(start)]
@@ -52,13 +57,84 @@ pub fn start() -> Result<(), JsValue> {
 
     // let mut vertices: [f32; 9] = [-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
     // let mut vertices: Vec<i32> = vec![-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
-    let mut vertices: Vec<i32> = vec![0, 0, 1, 1, 2, 0];
+    // let mut vertices: Vec<i32> = vec![0, 0, 1, -1, 2, -1, 2, 0, 2, 1];
+    let mut vertices: Vec<i32> = Vec::new();
+
+    let mut alive_cells: HashSet<(i32, i32)> = HashSet::new();
+    let mut alive_cells_next: HashSet<(i32, i32)> = HashSet::new();
+
+    // glider
+    alive_cells.insert((0, 0));
+    alive_cells.insert((1, -1));
+    alive_cells.insert((2, -1));
+    alive_cells.insert((2, 0));
+    alive_cells.insert((2, 1));
+
+    // square
+    alive_cells.insert((-3, 5));
+    alive_cells.insert((-2, 5));
+    alive_cells.insert((-2, 4));
+    alive_cells.insert((-3, 4));
+
+    // stable thing
+    alive_cells.insert((7, 7));
+    alive_cells.insert((8, 7));
+    alive_cells.insert((9, 7));
+    alive_cells.insert((8, 8));
+
+    fn get_num_neighbours(cell: &(i32, i32), alive_cells: &HashSet<(i32, i32)>) -> i32 {
+        let mut num_neighbours = 0;
+        for x in -1..=1 {
+            for y in -1..=1 {
+                if !(x == 0 && y == 0) && alive_cells.contains(&(cell.0 + x, cell.1 + y)) {
+                    num_neighbours += 1;
+                }
+            }
+        }
+        return num_neighbours;
+    }
+
+    fn game_of_life_step(alive_cells: &HashSet<(i32, i32)>, alive_cells_next: &mut HashSet<(i32, i32)>) {
+        alive_cells_next.clear();
+        for cell in alive_cells {
+            let num_neighbours = get_num_neighbours(cell, &alive_cells);
+            for x in -1..=1 {
+                for y in -1..=1 {
+                    if !(x == 0 && y == 0) {
+                        let check_cell = (cell.0 + x, cell.1 + y);
+                        let is_dead = !alive_cells.contains(&check_cell);
+                        if is_dead && get_num_neighbours(&check_cell, &alive_cells) == 3 {
+                            alive_cells_next.insert(check_cell);
+                        }
+                    }
+                }
+            }
+            if num_neighbours == 2 || num_neighbours == 3 {
+                alive_cells_next.insert(cell.clone());
+            }
+        }
+    }
+
+    // for i in 0..3 {
+    //     game_of_life_step(&alive_cells, &mut alive_cells_next);
+    //     std::mem::swap(&mut alive_cells, &mut alive_cells_next);
+    // }
+    //
+    // vertices.clear();
+    // for cell in &alive_cells {
+    //     vertices.push(cell.0);
+    //     vertices.push(cell.1);
+    // }
 
     // for x in 0..100 {
     //     for y in 0..100 {
     //         vertices.push(x);
     //         vertices.push(y);
     //     }
+    // }
+
+    // for i in (0..vertices.len()).step_by(2) {
+    //     web_sys::console::log_1(&format!("{}, {}", vertices[i], vertices[i + 1]).into());
     // }
 
     let position_attribute_location = context.get_attrib_location(&program, "position");
@@ -73,16 +149,23 @@ pub fn start() -> Result<(), JsValue> {
     //
     // As a result, after `Float32Array::view` we have to be very careful not to
     // do any memory allocations before it's dropped.
-    unsafe {
-        // let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
-        let positions_array_buf_view = js_sys::Int32Array::view(&vertices);
+    // unsafe {
+    //     // let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
+    //     let positions_array_buf_view = js_sys::Int32Array::view(&vertices);
+    //
+    //     context.buffer_data_with_array_buffer_view(
+    //         WebGl2RenderingContext::ARRAY_BUFFER,
+    //         &positions_array_buf_view,
+    //         WebGl2RenderingContext::STREAM_DRAW,
+    //     );
+    // }
 
-        context.buffer_data_with_array_buffer_view(
-            WebGl2RenderingContext::ARRAY_BUFFER,
-            &positions_array_buf_view,
-            WebGl2RenderingContext::STREAM_DRAW,
-        );
-    }
+    let buffer_size = 1024 * 1024 * 100; // 100Mib
+    context.buffer_data_with_i32(
+        WebGl2RenderingContext::ARRAY_BUFFER,
+        buffer_size,
+        WebGl2RenderingContext::STREAM_DRAW,
+    );
 
     let vao = context
         .create_vertex_array()
@@ -97,10 +180,7 @@ pub fn start() -> Result<(), JsValue> {
     let u_canvas_height_loc = context.get_uniform_location(&program, "u_canvas_height");
     context.uniform1i(u_canvas_height_loc.as_ref(), canvas_height);
 
-    let u_color_loc = context.get_uniform_location(&program, "u_color");
-    context.uniform3f(u_color_loc.as_ref(), 1.0, 0.0, 0.0);
-
-    let orthographic_size = 15.0;
+    let orthographic_size = 100.0;
     let projection = Mat4::orthographic_rh_gl(-canvas_aspect_ratio * orthographic_size, canvas_aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
 
     let u_orthographic_size_loc = context.get_uniform_location(&program, "u_orthographic_size");
@@ -116,20 +196,30 @@ pub fn start() -> Result<(), JsValue> {
     let window_outer = Rc::clone(&window);
 
     *animation_loop_closure_outer.borrow_mut() = Some(Closure::<dyn FnMut()>::new(move || {
-        // unsafe {
-        //     // vertices[0] += 1;
-        //     // vertices[1] += 1;
-        //     // let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
-        //     let positions_array_buf_view = js_sys::Int32Array::view(&vertices);
-        //
-        //     context.buffer_sub_data_with_i32_and_array_buffer_view_and_src_offset_and_length(
-        //         WebGl2RenderingContext::ARRAY_BUFFER,
-        //         0,
-        //         &positions_array_buf_view,
-        //         0,
-        //         vertices.len() as u32
-        //     );
-        // }
+        game_of_life_step(&alive_cells, &mut alive_cells_next);
+        std::mem::swap(&mut alive_cells, &mut alive_cells_next);
+
+        vertices.clear();
+        for cell in &alive_cells {
+            if (vertices.len() + 2) * 4 > buffer_size as usize {
+                console_log!("buffer not large enough. skipping vertices");
+                break;
+            }
+            vertices.push(cell.0);
+            vertices.push(cell.1);
+        }
+
+        unsafe {
+            let positions_array_buf_view = js_sys::Int32Array::view(&vertices);
+
+            context.buffer_sub_data_with_i32_and_array_buffer_view_and_src_offset_and_length(
+                WebGl2RenderingContext::ARRAY_BUFFER,
+                0,
+                &positions_array_buf_view,
+                0,
+                vertices.len() as u32
+            );
+        }
 
         let vert_count = (vertices.len() / 2) as i32;
         draw(&context, vert_count);

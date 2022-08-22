@@ -20,9 +20,13 @@ pub fn start() -> Result<(), JsValue> {
     let document = window.document().unwrap();
     let body = document.body().expect("document should have a body");
 
+    let canvas_width = 700;
+    let canvas_height = 500;
+    let canvas_aspect_ratio = canvas_width as f32 / canvas_height as f32;
+
     let canvas = document.create_element("canvas")?;
-    canvas.set_attribute("width", "500")?;
-    canvas.set_attribute("height", "500")?;
+    canvas.set_attribute("width", &canvas_width.to_string())?;
+    canvas.set_attribute("height", &canvas_height.to_string())?;
     body.append_child(&canvas)?;
 
     let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
@@ -48,14 +52,14 @@ pub fn start() -> Result<(), JsValue> {
 
     // let mut vertices: [f32; 9] = [-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
     // let mut vertices: Vec<i32> = vec![-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
-    let mut vertices: Vec<i32> = vec![];
+    let mut vertices: Vec<i32> = vec![0, 0, 1, 1, 2, 0];
 
-    for x in 0..100 {
-        for y in 0..100 {
-            vertices.push(x);
-            vertices.push(y);
-        }
-    }
+    // for x in 0..100 {
+    //     for y in 0..100 {
+    //         vertices.push(x);
+    //         vertices.push(y);
+    //     }
+    // }
 
     let position_attribute_location = context.get_attrib_location(&program, "position");
     let buffer = context.create_buffer().ok_or("Failed to create buffer")?;
@@ -90,7 +94,20 @@ pub fn start() -> Result<(), JsValue> {
 
     context.bind_vertex_array(Some(&vao));
 
-    // let projection = Mat4::orthographic_rh_gl(0.0, 100.0, 0.0, 100.0, -1.0, 1.0);
+    let u_canvas_height_loc = context.get_uniform_location(&program, "u_canvas_height");
+    context.uniform1i(u_canvas_height_loc.as_ref(), canvas_height);
+
+    let u_color_loc = context.get_uniform_location(&program, "u_color");
+    context.uniform3f(u_color_loc.as_ref(), 1.0, 0.0, 0.0);
+
+    let orthographic_size = 15.0;
+    let projection = Mat4::orthographic_rh_gl(-canvas_aspect_ratio * orthographic_size, canvas_aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
+
+    let u_orthographic_size_loc = context.get_uniform_location(&program, "u_orthographic_size");
+    context.uniform1f(u_orthographic_size_loc.as_ref(), orthographic_size);
+
+    let u_projection_loc = context.get_uniform_location(&program, "u_projection");
+    context.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.as_ref());
 
     let animation_loop_closure = Rc::new(RefCell::new(None::<Closure::<dyn FnMut()>>));
     let animation_loop_closure_outer = animation_loop_closure.clone();

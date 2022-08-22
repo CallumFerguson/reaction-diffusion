@@ -1,8 +1,12 @@
 #version 300 es
 
+uniform mat4 u_projection;
+uniform int u_canvas_height;
+uniform float u_orthographic_size;
+
 in vec4 position;
 
 void main() {
-    gl_Position = vec4(position.xyz / 10.0, 1.0);
-    gl_PointSize = 10.0;
+    gl_Position = u_projection * position;
+    gl_PointSize = (1.0 / u_orthographic_size) * float(u_canvas_height) / 2.0;
 }

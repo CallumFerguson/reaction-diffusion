@@ -63,24 +63,30 @@ pub fn start() -> Result<(), JsValue> {
     let mut alive_cells: HashSet<(i32, i32)> = HashSet::new();
     let mut alive_cells_next: HashSet<(i32, i32)> = HashSet::new();
 
-    // glider
-    alive_cells.insert((0, 0));
-    alive_cells.insert((1, -1));
-    alive_cells.insert((2, -1));
-    alive_cells.insert((2, 0));
-    alive_cells.insert((2, 1));
+    // // glider
+    // alive_cells.insert((0, 0));
+    // alive_cells.insert((1, -1));
+    // alive_cells.insert((2, -1));
+    // alive_cells.insert((2, 0));
+    // alive_cells.insert((2, 1));
+    //
+    // // square
+    // alive_cells.insert((-3, 5));
+    // alive_cells.insert((-2, 5));
+    // alive_cells.insert((-2, 4));
+    // alive_cells.insert((-3, 4));
+    //
+    // // stable thing
+    // alive_cells.insert((7, 7));
+    // alive_cells.insert((8, 7));
+    // alive_cells.insert((9, 7));
+    // alive_cells.insert((8, 8));
 
-    // square
-    alive_cells.insert((-3, 5));
-    alive_cells.insert((-2, 5));
-    alive_cells.insert((-2, 4));
-    alive_cells.insert((-3, 4));
-
-    // stable thing
-    alive_cells.insert((7, 7));
-    alive_cells.insert((8, 7));
-    alive_cells.insert((9, 7));
-    alive_cells.insert((8, 8));
+    for x in 0..100 {
+        for y in 0..100 {
+            alive_cells.insert((x, y));
+        }
+    }
 
     fn get_num_neighbours(cell: &(i32, i32), alive_cells: &HashSet<(i32, i32)>) -> i32 {
         let mut num_neighbours = 0;
@@ -103,7 +109,7 @@ pub fn start() -> Result<(), JsValue> {
                     if !(x == 0 && y == 0) {
                         let check_cell = (cell.0 + x, cell.1 + y);
                         let is_dead = !alive_cells.contains(&check_cell);
-                        if is_dead && get_num_neighbours(&check_cell, &alive_cells) == 3 {
+                        if is_dead && !alive_cells_next.contains(&check_cell) && get_num_neighbours(&check_cell, &alive_cells) == 3 {
                             alive_cells_next.insert(check_cell);
                         }
                     }
@@ -124,13 +130,6 @@ pub fn start() -> Result<(), JsValue> {
     // for cell in &alive_cells {
     //     vertices.push(cell.0);
     //     vertices.push(cell.1);
-    // }
-
-    // for x in 0..100 {
-    //     for y in 0..100 {
-    //         vertices.push(x);
-    //         vertices.push(y);
-    //     }
     // }
 
     // for i in (0..vertices.len()).step_by(2) {
@@ -180,7 +179,7 @@ pub fn start() -> Result<(), JsValue> {
     let u_canvas_height_loc = context.get_uniform_location(&program, "u_canvas_height");
     context.uniform1i(u_canvas_height_loc.as_ref(), canvas_height);
 
-    let orthographic_size = 100.0;
+    let orthographic_size = 200.0;
     let projection = Mat4::orthographic_rh_gl(-canvas_aspect_ratio * orthographic_size, canvas_aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
 
     let u_orthographic_size_loc = context.get_uniform_location(&program, "u_orthographic_size");
@@ -189,20 +188,24 @@ pub fn start() -> Result<(), JsValue> {
     let u_projection_loc = context.get_uniform_location(&program, "u_projection");
     context.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.as_ref());
 
-    let animation_loop_closure = Rc::new(RefCell::new(None::<Closure::<dyn FnMut()>>));
+    let animation_loop_closure = Rc::new(RefCell::new(None::<Closure::<dyn FnMut(_)>>));
     let animation_loop_closure_outer = animation_loop_closure.clone();
 
     let window = Rc::new(window);
     let window_outer = Rc::clone(&window);
 
-    *animation_loop_closure_outer.borrow_mut() = Some(Closure::<dyn FnMut()>::new(move || {
+    *animation_loop_closure_outer.borrow_mut() = Some(Closure::<dyn FnMut(_)>::new(move |now: f32| {
+        let unscaled_time = now * 0.001;
+
+        console_log!("{}", unscaled_time);
+
         game_of_life_step(&alive_cells, &mut alive_cells_next);
         std::mem::swap(&mut alive_cells, &mut alive_cells_next);
 
         vertices.clear();
         for cell in &alive_cells {
             if (vertices.len() + 2) * 4 > buffer_size as usize {
-                console_log!("buffer not large enough. skipping vertices");
+                console_log!("buffer not large enough. skipping remaining cells");
                 break;
             }
             vertices.push(cell.0);
@@ -226,7 +229,17 @@ pub fn start() -> Result<(), JsValue> {
 
         window.request_animation_frame(animation_loop_closure.borrow().as_ref().unwrap().as_ref().unchecked_ref()).expect("request_animation_frame failed");
     }));
-    window_outer.request_animation_frame(animation_loop_closure_outer.borrow().as_ref().unwrap().as_ref().unchecked_ref()).expect("request_animation_frame failed");
+    let window = window_outer;
+    window.request_animation_frame(animation_loop_closure_outer.borrow().as_ref().unwrap().as_ref().unchecked_ref()).expect("request_animation_frame failed");
+
+    let c = Closure::<dyn Fn(_)>::new(move |event: web_sys::MouseEvent| {
+        // let e: web_sys::MouseEvent = event.into();
+        console_log!("click {}", event.time_stamp());
+        web_sys::console::log_1(&event);
+    });
+
+    canvas.add_event_listener_with_callback("click", c.as_ref().unchecked_ref())?;
+    c.forget();
 
     Ok(())
 }

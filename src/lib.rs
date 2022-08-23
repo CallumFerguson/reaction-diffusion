@@ -4,8 +4,9 @@ use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader};
 use console_error_panic_hook::hook;
 use std::cell::RefCell;
 use std::collections::HashSet;
+use std::ops::{Mul, Sub};
 use std::rc::Rc;
-use glam::Mat4;
+use glam::{Mat4, Vec3, Vec4};
 
 // macro_rules! console_log {
 //     ($($t:tt)*) => (web_sys::console::log_1(&format_args!($($t)*).to_string().into()))
@@ -180,35 +181,66 @@ pub fn start() -> Result<(), JsValue> {
     context.uniform1i(u_canvas_height_loc.as_ref(), canvas_height);
 
     let mut orthographic_size = 200.0;
-    let projection = Mat4::orthographic_rh_gl(-canvas_aspect_ratio * orthographic_size, canvas_aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
+    let mut projection = Mat4::orthographic_rh_gl(-canvas_aspect_ratio * orthographic_size, canvas_aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
+    let projection = Rc::new(RefCell::new(projection));
 
     let u_projection_loc = context.get_uniform_location(&program, "u_projection");
-    context.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.as_ref());
+    context.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.borrow().as_ref());
 
     let u_orthographic_size_loc = context.get_uniform_location(&program, "u_orthographic_size");
     context.uniform1f(u_orthographic_size_loc.as_ref(), orthographic_size);
 
+    let mut camera_pos = Vec3::new(0.0, 0.0, 0.0);
+    let mut view = Mat4::from_translation(camera_pos).inverse();
+
+    let screen_to_clip = Mat4::orthographic_rh_gl(0.0, canvas_width as f32, canvas_height as f32, 0.0, -1.0, 1.0);
+    let clip_to_screen = screen_to_clip.clone().inverse();
+    // let world_to_clip = projection * view;
+    // let clip_to_world = world_to_clip.clone().inverse();
+    // let screen_to_world = screen_to_clip * clip_to_world;
+    // let world_to_screen = screen_to_world.clone().inverse();
+
+    let u_view_loc = context.get_uniform_location(&program, "u_view");
+    context.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, view.as_ref());
+
     let context = Rc::new(context);
     let context_inner = Rc::clone(&context);
+    let projection_outer = Rc::clone(&projection);
     let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::WheelEvent| {
         orthographic_size += event.delta_y() as f32 / 500.0 * orthographic_size;
         orthographic_size = orthographic_size.clamp(1.0, 10000.0);
 
-        let projection = Mat4::orthographic_rh_gl(-canvas_aspect_ratio * orthographic_size, canvas_aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
+        *projection.borrow_mut() = Mat4::orthographic_rh_gl(-canvas_aspect_ratio * orthographic_size, canvas_aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
 
-        context_inner.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.as_ref());
+        context_inner.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.borrow().as_ref());
         context_inner.uniform1f(u_orthographic_size_loc.as_ref(), orthographic_size);
     });
     canvas.add_event_listener_with_callback("wheel", event_closure.as_ref().unchecked_ref())?;
     event_closure.forget();
+    let projection = projection_outer;
 
+    let context_inner = Rc::clone(&context);
     let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
         let primary = event.buttons() & (1u16 << 0) > 0;
         let secondary = event.buttons() & (1u16 << 1) > 0;
         let wheel = event.buttons() & (1u16 << 2) > 0;
 
         if primary {
-            console_log!("[{}, {}]", event.movement_x(), -event.movement_y());
+            // console_log!("[{}, {}]", event.movement_x(), -event.movement_y());
+            // console_log!("[{}, {}]", event.offset_x(), event.offset_y());
+
+            let world_to_clip = *projection.borrow() * view;
+            let clip_to_world = world_to_clip.clone().inverse();
+
+            let zero_zero_world = clip_to_world * screen_to_clip * Vec4::new(0.0, 0.0, 0.0, 1.0);
+            let change_from_zero_zero_world = clip_to_world * screen_to_clip * Vec4::new(event.movement_x() as f32, event.movement_y() as f32, 0.0, 1.0);
+            // console_log!("[{}, {}] [{}, {}]", event.movement_x(), event.movement_y(), world_change.x, world_change.y);
+
+            camera_pos.x -= change_from_zero_zero_world.x - zero_zero_world.x;
+            camera_pos.y -= change_from_zero_zero_world.y - zero_zero_world.y;
+            view = Mat4::from_translation(camera_pos).inverse();
+
+            context_inner.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, view.as_ref());
         }
     });
     canvas.add_event_listener_with_callback("mousemove", event_closure.as_ref().unchecked_ref())?;

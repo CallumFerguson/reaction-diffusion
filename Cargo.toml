@@ -13,6 +13,8 @@ js-sys = "0.3.59"
 wasm-bindgen = "0.2.82"
 console_error_panic_hook = "0.1.7"
 glam = { version = "0.21", default-features = false, features = ["libm"] }
+rand = "0.8.5"
+getrandom = { version = "0.2", features = ["js"] }
 
 [dependencies.web-sys]
 version = "0.3.4"

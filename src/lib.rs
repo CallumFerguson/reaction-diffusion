@@ -179,14 +179,28 @@ pub fn start() -> Result<(), JsValue> {
     let u_canvas_height_loc = context.get_uniform_location(&program, "u_canvas_height");
     context.uniform1i(u_canvas_height_loc.as_ref(), canvas_height);
 
-    let orthographic_size = 200.0;
+    let mut orthographic_size = 200.0;
     let projection = Mat4::orthographic_rh_gl(-canvas_aspect_ratio * orthographic_size, canvas_aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
+
+    let u_projection_loc = context.get_uniform_location(&program, "u_projection");
+    context.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.as_ref());
 
     let u_orthographic_size_loc = context.get_uniform_location(&program, "u_orthographic_size");
     context.uniform1f(u_orthographic_size_loc.as_ref(), orthographic_size);
 
-    let u_projection_loc = context.get_uniform_location(&program, "u_projection");
-    context.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.as_ref());
+    let context = Rc::new(context);
+    let context_inner = Rc::clone(&context);
+    let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::WheelEvent| {
+        orthographic_size += event.delta_y() as f32 / 500.0 * orthographic_size;
+        orthographic_size = orthographic_size.clamp(1.0, 10000.0);
+
+        let projection = Mat4::orthographic_rh_gl(-canvas_aspect_ratio * orthographic_size, canvas_aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
+
+        context_inner.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.as_ref());
+        context_inner.uniform1f(u_orthographic_size_loc.as_ref(), orthographic_size);
+    });
+    canvas.add_event_listener_with_callback("wheel", event_closure.as_ref().unchecked_ref())?;
+    event_closure.forget();
 
     let animation_loop_closure = Rc::new(RefCell::new(None::<Closure::<dyn FnMut(_)>>));
     let animation_loop_closure_outer = animation_loop_closure.clone();
@@ -205,6 +219,7 @@ pub fn start() -> Result<(), JsValue> {
         let unscaled_time = now - start_time;
         let delta_time = unscaled_time - last_unscaled_time;
         last_unscaled_time = unscaled_time;
+        // console_log!("{}", 1.0 / delta_time);
 
         game_of_life_step(&alive_cells, &mut alive_cells_next);
         std::mem::swap(&mut alive_cells, &mut alive_cells_next);
@@ -227,7 +242,7 @@ pub fn start() -> Result<(), JsValue> {
                 0,
                 &positions_array_buf_view,
                 0,
-                vertices.len() as u32
+                vertices.len() as u32,
             );
         }
 
@@ -238,15 +253,6 @@ pub fn start() -> Result<(), JsValue> {
     }));
     let window = window_outer;
     window.request_animation_frame(animation_loop_closure_outer.borrow().as_ref().unwrap().as_ref().unchecked_ref()).expect("request_animation_frame failed");
-
-    let c = Closure::<dyn Fn(_)>::new(move |event: web_sys::MouseEvent| {
-        // let e: web_sys::MouseEvent = event.into();
-        console_log!("click {}", event.time_stamp());
-        web_sys::console::log_1(&event);
-    });
-
-    canvas.add_event_listener_with_callback("click", c.as_ref().unchecked_ref())?;
-    c.forget();
 
     Ok(())
 }

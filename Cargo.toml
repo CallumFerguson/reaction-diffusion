@@ -29,5 +29,6 @@ features = [
     'Window',
     'Node',
     'console',
-    'MouseEvent'
+    'MouseEvent',
+    'WheelEvent'
 ]

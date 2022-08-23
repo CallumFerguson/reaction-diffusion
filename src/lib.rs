@@ -202,6 +202,18 @@ pub fn start() -> Result<(), JsValue> {
     canvas.add_event_listener_with_callback("wheel", event_closure.as_ref().unchecked_ref())?;
     event_closure.forget();
 
+    let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
+        let primary = event.buttons() & (1u16 << 0) > 0;
+        let secondary = event.buttons() & (1u16 << 1) > 0;
+        let wheel = event.buttons() & (1u16 << 2) > 0;
+
+        if primary {
+            console_log!("[{}, {}]", event.movement_x(), -event.movement_y());
+        }
+    });
+    canvas.add_event_listener_with_callback("mousemove", event_closure.as_ref().unchecked_ref())?;
+    event_closure.forget();
+
     let animation_loop_closure = Rc::new(RefCell::new(None::<Closure::<dyn FnMut(_)>>));
     let animation_loop_closure_outer = animation_loop_closure.clone();
 

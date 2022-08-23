@@ -194,10 +194,17 @@ pub fn start() -> Result<(), JsValue> {
     let window = Rc::new(window);
     let window_outer = Rc::clone(&window);
 
-    *animation_loop_closure_outer.borrow_mut() = Some(Closure::<dyn FnMut(_)>::new(move |now: f32| {
-        let unscaled_time = now * 0.001;
+    let mut start_time = -1.0;
+    let mut last_unscaled_time = 0.0;
 
-        console_log!("{}", unscaled_time);
+    *animation_loop_closure_outer.borrow_mut() = Some(Closure::<dyn FnMut(_)>::new(move |now: f64| {
+        let now = now * 0.001;
+        if start_time < 0.0 {
+            start_time = now;
+        }
+        let unscaled_time = now - start_time;
+        let delta_time = unscaled_time - last_unscaled_time;
+        last_unscaled_time = unscaled_time;
 
         game_of_life_step(&alive_cells, &mut alive_cells_next);
         std::mem::swap(&mut alive_cells, &mut alive_cells_next);

@@ -7,9 +7,13 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use glam::{Mat4, Vec3, Vec4};
 
-macro_rules! console_log {
-    ($($t:tt)*) => (web_sys::console::log_1(&format!($($t)*).into()))
-}
+mod camera;
+pub use crate::camera::Camera;
+
+mod screen;
+pub use crate::screen::Screen;
+
+#[macro_use] mod utils;
 
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
@@ -17,21 +21,16 @@ pub fn start() -> Result<(), JsValue> {
 
     console_log!("starting webgl");
 
-    let window = web_sys::window().expect("no global `window` exists");
-    let document = window.document().unwrap();
-    let body = document.body().expect("document should have a body");
+    let window = Rc::new(web_sys::window().expect("no global `window` exists"));
 
-    let canvas_width = 700;
-    let canvas_height = 500;
+    let screen = Screen::new();
+
+    let canvas_width = window.inner_width().unwrap().as_f64().unwrap() as i32;
+    let canvas_height = window.inner_height().unwrap().as_f64().unwrap() as i32;
     let canvas_aspect_ratio = canvas_width as f32 / canvas_height as f32;
 
-    let canvas = document.create_element("canvas")?;
-    canvas.set_attribute("width", &canvas_width.to_string())?;
-    canvas.set_attribute("height", &canvas_height.to_string())?;
-    body.append_child(&canvas)?;
-
-    let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
-
+    let screen_borrow = screen.borrow();
+    let canvas = screen_borrow.canvas();
     let context = canvas
         .get_context("webgl2")?
         .unwrap()
@@ -79,39 +78,6 @@ OO........O...O.OO....O.O...........
         }
     }
 
-    fn get_num_neighbours(cell: &(i32, i32), alive_cells: &HashSet<(i32, i32)>) -> i32 {
-        let mut num_neighbours = 0;
-        for x in -1..=1 {
-            for y in -1..=1 {
-                if !(x == 0 && y == 0) && alive_cells.contains(&(cell.0 + x, cell.1 + y)) {
-                    num_neighbours += 1;
-                }
-            }
-        }
-        return num_neighbours;
-    }
-
-    fn game_of_life_step(alive_cells: &HashSet<(i32, i32)>, alive_cells_next: &mut HashSet<(i32, i32)>) {
-        alive_cells_next.clear();
-        for cell in alive_cells {
-            let num_neighbours = get_num_neighbours(cell, &alive_cells);
-            for x in -1..=1 {
-                for y in -1..=1 {
-                    if !(x == 0 && y == 0) {
-                        let check_cell = (cell.0 + x, cell.1 + y);
-                        let is_dead = !alive_cells.contains(&check_cell);
-                        if is_dead && !alive_cells_next.contains(&check_cell) && get_num_neighbours(&check_cell, &alive_cells) == 3 {
-                            alive_cells_next.insert(check_cell);
-                        }
-                    }
-                }
-            }
-            if num_neighbours == 2 || num_neighbours == 3 {
-                alive_cells_next.insert(cell.clone());
-            }
-        }
-    }
-
     let position_attribute_location = context.get_attrib_location(&program, "position");
     let buffer = context.create_buffer().ok_or("Failed to create buffer")?;
     context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
@@ -135,6 +101,14 @@ OO........O...O.OO....O.O...........
 
     let u_canvas_height_loc = context.get_uniform_location(&program, "u_canvas_height");
     context.uniform1i(u_canvas_height_loc.as_ref(), canvas_height);
+
+    // let mut camera = Camera::new();
+    // // {
+    // //     orthographic_size: 50.0,
+    // //     camera_pos: Vec3::new(16.0, -5.0, 0.0)
+    // // };
+    // camera.orthographic_size = 5.0;
+    // console_log!("{}", camera.orthographic_size);
 
     let mut orthographic_size = 50.0;
     let projection = Mat4::orthographic_rh_gl(-canvas_aspect_ratio * orthographic_size, canvas_aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
@@ -170,7 +144,7 @@ OO........O...O.OO....O.O...........
         let mouse_world_before = clip_to_world * screen_to_clip * Vec4::new(event.offset_x() as f32, event.offset_y() as f32, 0.0, 1.0);
 
         orthographic_size += event.delta_y() as f32 / 500.0 * orthographic_size;
-        orthographic_size = orthographic_size.clamp(1.0, 10000.0);
+        orthographic_size = orthographic_size.clamp(7.5, 7500.0);
 
         *projection.borrow_mut() = Mat4::orthographic_rh_gl(-canvas_aspect_ratio * orthographic_size, canvas_aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
 
@@ -334,5 +308,38 @@ pub fn link_program(
         Err(context
             .get_program_info_log(&program)
             .unwrap_or_else(|| String::from("Unknown error creating program object")))
+    }
+}
+
+fn get_num_neighbours(cell: &(i32, i32), alive_cells: &HashSet<(i32, i32)>) -> i32 {
+    let mut num_neighbours = 0;
+    for x in -1..=1 {
+        for y in -1..=1 {
+            if !(x == 0 && y == 0) && alive_cells.contains(&(cell.0 + x, cell.1 + y)) {
+                num_neighbours += 1;
+            }
+        }
+    }
+    return num_neighbours;
+}
+
+fn game_of_life_step(alive_cells: &HashSet<(i32, i32)>, alive_cells_next: &mut HashSet<(i32, i32)>) {
+    alive_cells_next.clear();
+    for cell in alive_cells {
+        let num_neighbours = get_num_neighbours(cell, &alive_cells);
+        for x in -1..=1 {
+            for y in -1..=1 {
+                if !(x == 0 && y == 0) {
+                    let check_cell = (cell.0 + x, cell.1 + y);
+                    let is_dead = !alive_cells.contains(&check_cell);
+                    if is_dead && !alive_cells_next.contains(&check_cell) && get_num_neighbours(&check_cell, &alive_cells) == 3 {
+                        alive_cells_next.insert(check_cell);
+                    }
+                }
+            }
+        }
+        if num_neighbours == 2 || num_neighbours == 3 {
+            alive_cells_next.insert(cell.clone());
+        }
     }
 }

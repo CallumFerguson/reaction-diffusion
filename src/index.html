@@ -2,7 +2,7 @@
 <head>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
 </head>
-<body oncontextmenu="return false;">
+<body oncontextmenu="return false;" style="margin:0;">
 <script>
     function connect(stopped) {
         return new Promise((resolve, reject) => {
@@ -48,7 +48,6 @@
 </script>
 <script type="module">
     import init from '../pkg/rustproject.js';
-
     init();
 </script>
 </body>

@@ -4,14 +4,8 @@ use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader};
 use console_error_panic_hook::hook;
 use std::cell::RefCell;
 use std::collections::HashSet;
-use std::ops::{Mul, Sub};
 use std::rc::Rc;
 use glam::{Mat4, Vec3, Vec4};
-use rand::Rng;
-
-// macro_rules! console_log {
-//     ($($t:tt)*) => (web_sys::console::log_1(&format_args!($($t)*).to_string().into()))
-// }
 
 macro_rules! console_log {
     ($($t:tt)*) => (web_sys::console::log_1(&format!($($t)*).into()))
@@ -62,33 +56,26 @@ pub fn start() -> Result<(), JsValue> {
     let mut alive_cells: HashSet<(i32, i32)> = HashSet::new();
     let mut alive_cells_next: HashSet<(i32, i32)> = HashSet::new();
 
-    // // glider
-    // alive_cells.insert((0, 0));
-    // alive_cells.insert((1, -1));
-    // alive_cells.insert((2, -1));
-    // alive_cells.insert((2, 0));
-    // alive_cells.insert((2, 1));
-    //
-    // // square
-    // alive_cells.insert((-3, 5));
-    // alive_cells.insert((-2, 5));
-    // alive_cells.insert((-2, 4));
-    // alive_cells.insert((-3, 4));
-    //
-    // // stable thing
-    // alive_cells.insert((7, 7));
-    // alive_cells.insert((8, 7));
-    // alive_cells.insert((9, 7));
-    // alive_cells.insert((8, 8));
+    let start_cells = "........................O...........
+......................O.O...........
+............OO......OO............OO
+...........O...O....OO............OO
+OO........O.....O...OO..............
+OO........O...O.OO....O.O...........
+..........O.....O.......O...........
+...........O...O....................
+............OO......................";
 
-    let start_square_size = 100;
-
-    let mut rng = rand::thread_rng();
-    for x in 0..start_square_size {
-        for y in 0..start_square_size {
-            if rng.gen::<bool>() {
-                alive_cells.insert((x, y));
-            }
+    let mut x = 0;
+    let mut y = 0;
+    for char in start_cells.chars() {
+        if char == 'O' {
+            alive_cells.insert((x, y));
+        }
+        x += 1;
+        if char == '\n' {
+            x = 0;
+            y -= 1;
         }
     }
 
@@ -149,7 +136,7 @@ pub fn start() -> Result<(), JsValue> {
     let u_canvas_height_loc = context.get_uniform_location(&program, "u_canvas_height");
     context.uniform1i(u_canvas_height_loc.as_ref(), canvas_height);
 
-    let mut orthographic_size: f32 = start_square_size as f32;
+    let mut orthographic_size = 50.0;
     let projection = Mat4::orthographic_rh_gl(-canvas_aspect_ratio * orthographic_size, canvas_aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
     let projection = Rc::new(RefCell::new(projection));
 
@@ -159,13 +146,13 @@ pub fn start() -> Result<(), JsValue> {
     let u_orthographic_size_loc = context.get_uniform_location(&program, "u_orthographic_size");
     context.uniform1f(u_orthographic_size_loc.as_ref(), orthographic_size);
 
-    let camera_pos = Vec3::new(start_square_size as f32 / 2.0 - 0.5, start_square_size as f32 / 2.0 - 0.5, 0.0);
+    let camera_pos = Vec3::new(16.0, -5.0, 0.0);
     let view = Mat4::from_translation(camera_pos).inverse();
     let camera_pos = Rc::new(RefCell::new(camera_pos));
     let view = Rc::new(RefCell::new(view));
 
     let screen_to_clip = Mat4::orthographic_rh_gl(0.0, canvas_width as f32, canvas_height as f32, 0.0, -1.0, 1.0);
-    let clip_to_screen = screen_to_clip.clone().inverse();
+    // let clip_to_screen = screen_to_clip.clone().inverse();
 
     let u_view_loc = context.get_uniform_location(&program, "u_view");
     context.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, view.borrow().as_ref());
@@ -212,8 +199,8 @@ pub fn start() -> Result<(), JsValue> {
     let context_inner = Rc::clone(&context);
     let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
         let primary = event.buttons() & (1u16 << 0) > 0;
-        let secondary = event.buttons() & (1u16 << 1) > 0;
-        let wheel = event.buttons() & (1u16 << 2) > 0;
+        // let secondary = event.buttons() & (1u16 << 1) > 0;
+        // let wheel = event.buttons() & (1u16 << 2) > 0;
 
         if primary {
             // console_log!("[{}, {}]", event.movement_x(), -event.movement_y());
@@ -253,7 +240,7 @@ pub fn start() -> Result<(), JsValue> {
             start_time = now;
         }
         let unscaled_time = now - start_time;
-        let delta_time = unscaled_time - last_unscaled_time;
+        let _delta_time = unscaled_time - last_unscaled_time;
         last_unscaled_time = unscaled_time;
         // console_log!("{}", 1.0 / delta_time);
 

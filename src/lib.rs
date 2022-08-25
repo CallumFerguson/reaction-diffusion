@@ -7,13 +7,12 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use glam::{Mat4, Vec3, Vec4};
 
-mod camera;
-pub use crate::camera::Camera;
+mod viewport;
 
-mod screen;
-pub use crate::screen::Screen;
+pub use crate::viewport::Viewport;
 
-#[macro_use] mod utils;
+#[macro_use]
+mod utils;
 
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
@@ -23,14 +22,10 @@ pub fn start() -> Result<(), JsValue> {
 
     let window = Rc::new(web_sys::window().expect("no global `window` exists"));
 
-    let screen = Screen::new();
+    let viewport = Viewport::new();
 
-    let screen_borrow = screen.borrow();
-    let canvas = screen_borrow.canvas();
-    let context = canvas
-        .get_context("webgl2")?
-        .unwrap()
-        .dyn_into::<WebGl2RenderingContext>()?;
+    let canvas = viewport.borrow().canvas();
+    let context = viewport.borrow().context();
 
     let vert_shader = compile_shader(
         &context,
@@ -95,8 +90,8 @@ OO........O...O.OO....O.O...........
 
     context.bind_vertex_array(Some(&vao));
 
-    let u_canvas_height_loc = context.get_uniform_location(&program, "u_canvas_height");
-    context.uniform1i(u_canvas_height_loc.as_ref(), screen.borrow().height());
+    // let u_canvas_height_loc = context.get_uniform_location(&program, "u_canvas_height");
+    // context.uniform1i(u_canvas_height_loc.as_ref(), viewport.borrow().height());
 
     // let mut camera = Camera::new();
     // // {
@@ -106,93 +101,97 @@ OO........O...O.OO....O.O...........
     // camera.orthographic_size = 5.0;
     // console_log!("{}", camera.orthographic_size);
 
-    let mut orthographic_size = 50.0;
-    let projection = Mat4::orthographic_rh_gl(-screen.borrow().aspect_ratio() * orthographic_size, screen.borrow().aspect_ratio() * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
-    let projection = Rc::new(RefCell::new(projection));
+    // let mut orthographic_size = 50.0;
+    // let projection = Mat4::orthographic_rh_gl(-viewport.borrow().aspect_ratio() * viewport.borrow().orthographic_size(), viewport.borrow().aspect_ratio() * viewport.borrow().orthographic_size(), -1.0 * viewport.borrow().orthographic_size(), 1.0 * viewport.borrow().orthographic_size(), -1.0, 1.0);
+    // let projection = Rc::new(RefCell::new(projection));
 
+    let projection = Mat4::orthographic_rh_gl(-viewport.borrow().aspect_ratio() * viewport.borrow().orthographic_size(), viewport.borrow().aspect_ratio() * viewport.borrow().orthographic_size(), -1.0 * viewport.borrow().orthographic_size(), 1.0 * viewport.borrow().orthographic_size(), -1.0, 1.0);
     let u_projection_loc = context.get_uniform_location(&program, "u_projection");
-    context.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.borrow().as_ref());
+    context.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.as_ref());
 
     let u_orthographic_size_loc = context.get_uniform_location(&program, "u_orthographic_size");
-    context.uniform1f(u_orthographic_size_loc.as_ref(), orthographic_size);
+    viewport.borrow_mut().set_orthographic_size_change(Some(Box::new(move |viewport: &Viewport| {
+        viewport.context().uniform1f(u_orthographic_size_loc.as_ref(), viewport.orthographic_size());
+    })));
 
-    let camera_pos = Vec3::new(16.0, -5.0, 0.0);
-    let view = Mat4::from_translation(camera_pos).inverse();
-    let camera_pos = Rc::new(RefCell::new(camera_pos));
-    let view = Rc::new(RefCell::new(view));
+    let u_canvas_height_loc = context.get_uniform_location(&program, "u_canvas_height");
+    viewport.borrow_mut().set_height_change(Some(Box::new(move |viewport: &Viewport| {
+        viewport.context().uniform1i(u_canvas_height_loc.as_ref(), viewport.height());
+    })));
 
+    // let camera_pos = Vec3::new(16.0, -5.0, 0.0);
+    // let view = Mat4::from_translation(viewport.borrow().camera_pos()).inverse();
+    // let view = Rc::new(RefCell::new(view));
+
+    let view = Mat4::from_translation(*viewport.borrow().camera_pos()).inverse();
     let u_view_loc = context.get_uniform_location(&program, "u_view");
-    context.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, view.borrow().as_ref());
+    context.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, view.as_ref());
 
-    let context = Rc::new(context);
+    // let context = Rc::new(context);
     let context_inner = Rc::clone(&context);
-    let projection_outer = Rc::clone(&projection);
-    let view_outer = Rc::clone(&view);
-    let camera_pos_outer = Rc::clone(&camera_pos);
-    let u_view_loc_outer = u_view_loc.clone();
-    let screen = Rc::clone(&screen);
-    let screen_outer = Rc::clone(&screen);
+    // let u_view_loc_outer = u_view_loc.clone();
+    let viewport = Rc::clone(&viewport);
+    let viewport_outer = Rc::clone(&viewport);
     let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::WheelEvent| {
-        let world_to_clip = *projection.borrow() * *view.borrow();
-        let clip_to_world = world_to_clip.clone().inverse();
+        // let world_to_clip = *projection.borrow() * *view.borrow();
+        // let clip_to_world = world_to_clip.clone().inverse();
+        //
+        // let screen_to_clip = Mat4::orthographic_rh_gl(0.0, viewport.borrow().width() as f32, viewport.borrow().height() as f32, 0.0, -1.0, 1.0);
+        // let mouse_world_before = clip_to_world * screen_to_clip * Vec4::new(event.offset_x() as f32, event.offset_y() as f32, 0.0, 1.0);
 
-        let screen_to_clip = Mat4::orthographic_rh_gl(0.0, screen.borrow().width() as f32, screen.borrow().height() as f32, 0.0, -1.0, 1.0);
-        let mouse_world_before = clip_to_world * screen_to_clip * Vec4::new(event.offset_x() as f32, event.offset_y() as f32, 0.0, 1.0);
-
+        let mut orthographic_size = viewport.borrow().orthographic_size();
         orthographic_size += event.delta_y() as f32 / 500.0 * orthographic_size;
         orthographic_size = orthographic_size.clamp(7.5, 7500.0);
+        viewport.borrow_mut().set_orthographic_size(orthographic_size);
 
-        *projection.borrow_mut() = Mat4::orthographic_rh_gl(-screen.borrow().aspect_ratio() * orthographic_size, screen.borrow().aspect_ratio() * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
-
-        context_inner.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.borrow().as_ref());
-        context_inner.uniform1f(u_orthographic_size_loc.as_ref(), orthographic_size);
-
-        let world_to_clip = *projection.borrow() * *view.borrow();
-        let clip_to_world = world_to_clip.clone().inverse();
-        let mouse_world_after = clip_to_world * screen_to_clip * Vec4::new(event.offset_x() as f32, event.offset_y() as f32, 0.0, 1.0);
-
-        let change = mouse_world_after - mouse_world_before;
-
-        camera_pos.borrow_mut().x -= change.x;
-        camera_pos.borrow_mut().y -= change.y;
-        *view.borrow_mut() = Mat4::from_translation(*camera_pos.borrow()).inverse();
-
-        context_inner.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, view.borrow().as_ref());
-
-        context_inner.uniform1i(u_canvas_height_loc.as_ref(), screen.borrow().height());
+        // *projection.borrow_mut() = Mat4::orthographic_rh_gl(-viewport.borrow().aspect_ratio() * viewport.borrow().orthographic_size(), viewport.borrow().aspect_ratio() * viewport.borrow().orthographic_size(), -1.0 * viewport.borrow().orthographic_size(), 1.0 * viewport.borrow().orthographic_size(), -1.0, 1.0);
+        //
+        // context_inner.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.borrow().as_ref());
+        // context_inner.uniform1f(u_orthographic_size_loc.as_ref(), viewport.borrow().orthographic_size());
+        //
+        // let world_to_clip = *projection.borrow() * *view.borrow();
+        // let clip_to_world = world_to_clip.clone().inverse();
+        // let mouse_world_after = clip_to_world * screen_to_clip * Vec4::new(event.offset_x() as f32, event.offset_y() as f32, 0.0, 1.0);
+        //
+        // let change = mouse_world_after - mouse_world_before;
+        //
+        // camera_pos.borrow_mut().x -= change.x;
+        // camera_pos.borrow_mut().y -= change.y;
+        // *view.borrow_mut() = Mat4::from_translation(*camera_pos.borrow()).inverse();
+        //
+        // context_inner.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, view.borrow().as_ref());
+        //
+        // context_inner.uniform1i(u_canvas_height_loc.as_ref(), viewport.borrow().height());
     });
     canvas.add_event_listener_with_callback("wheel", event_closure.as_ref().unchecked_ref())?;
     event_closure.forget();
-    let screen = screen_outer;
-    let projection = projection_outer;
-    let view = view_outer;
-    let camera_pos = camera_pos_outer;
-    let u_view_loc = u_view_loc_outer;
+    let viewport = viewport_outer;
+    // let u_view_loc = u_view_loc_outer;
 
     let context_inner = Rc::clone(&context);
     let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
-        let primary = event.buttons() & (1u16 << 0) > 0;
-        // let secondary = event.buttons() & (1u16 << 1) > 0;
-        // let wheel = event.buttons() & (1u16 << 2) > 0;
-
-        if primary {
-            // console_log!("[{}, {}]", event.movement_x(), -event.movement_y());
-            // console_log!("[{}, {}]", event.offset_x(), event.offset_y());
-
-            let world_to_clip = *projection.borrow() * *view.borrow();
-            let clip_to_world = world_to_clip.clone().inverse();
-
-            let screen_to_clip = Mat4::orthographic_rh_gl(0.0, screen.borrow().width() as f32, screen.borrow().height() as f32, 0.0, -1.0, 1.0);
-            let zero_zero_world = clip_to_world * screen_to_clip * Vec4::new(0.0, 0.0, 0.0, 1.0);
-            let change_from_zero_zero_world = clip_to_world * screen_to_clip * Vec4::new(event.movement_x() as f32, event.movement_y() as f32, 0.0, 1.0);
-            // console_log!("[{}, {}] [{}, {}]", event.movement_x(), event.movement_y(), world_change.x, world_change.y);
-
-            camera_pos.borrow_mut().x -= change_from_zero_zero_world.x - zero_zero_world.x;
-            camera_pos.borrow_mut().y -= change_from_zero_zero_world.y - zero_zero_world.y;
-            *view.borrow_mut() = Mat4::from_translation(*camera_pos.borrow()).inverse();
-
-            context_inner.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, view.borrow().as_ref());
-        }
+        // let primary = event.buttons() & (1u16 << 0) > 0;
+        // // let secondary = event.buttons() & (1u16 << 1) > 0;
+        // // let wheel = event.buttons() & (1u16 << 2) > 0;
+        //
+        // if primary {
+        //     // console_log!("[{}, {}]", event.movement_x(), -event.movement_y());
+        //     // console_log!("[{}, {}]", event.offset_x(), event.offset_y());
+        //
+        //     let world_to_clip = *projection.borrow() * *view.borrow();
+        //     let clip_to_world = world_to_clip.clone().inverse();
+        //
+        //     let screen_to_clip = Mat4::orthographic_rh_gl(0.0, viewport.borrow().width() as f32, viewport.borrow().height() as f32, 0.0, -1.0, 1.0);
+        //     let zero_zero_world = clip_to_world * screen_to_clip * Vec4::new(0.0, 0.0, 0.0, 1.0);
+        //     let change_from_zero_zero_world = clip_to_world * screen_to_clip * Vec4::new(event.movement_x() as f32, event.movement_y() as f32, 0.0, 1.0);
+        //     // console_log!("[{}, {}] [{}, {}]", event.movement_x(), event.movement_y(), world_change.x, world_change.y);
+        //
+        //     camera_pos.borrow_mut().x -= change_from_zero_zero_world.x - zero_zero_world.x;
+        //     camera_pos.borrow_mut().y -= change_from_zero_zero_world.y - zero_zero_world.y;
+        //     *view.borrow_mut() = Mat4::from_translation(*camera_pos.borrow()).inverse();
+        //
+        //     context_inner.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, view.borrow().as_ref());
+        // }
     });
     canvas.add_event_listener_with_callback("mousemove", event_closure.as_ref().unchecked_ref())?;
     event_closure.forget();
@@ -217,6 +216,8 @@ OO........O...O.OO....O.O...........
         let _delta_time = unscaled_time - last_unscaled_time;
         last_unscaled_time = unscaled_time;
         // console_log!("{}", 1.0 / delta_time);
+
+        viewport.borrow().update_uniforms_in_shader();
 
         game_of_life_step(&alive_cells, &mut alive_cells_next);
         std::mem::swap(&mut alive_cells, &mut alive_cells_next);

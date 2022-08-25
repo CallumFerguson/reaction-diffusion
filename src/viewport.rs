@@ -1,11 +1,9 @@
 use std::cell::RefCell;
-use std::ops::MulAssign;
 use std::rc::Rc;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 use web_sys::WebGl2RenderingContext;
-use glam::{Mat4, Vec3, Vec4};
-use js_sys::Atomics::or;
+use glam::{Mat4, Vec3};
 
 struct Updater<T> {
     value: T,

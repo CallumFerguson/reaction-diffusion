@@ -5,7 +5,7 @@ use console_error_panic_hook::hook;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, Vec4};
 
 mod viewport;
 
@@ -88,23 +88,6 @@ OO........O...O.OO....O.O...........
     context.vertex_attrib_pointer_with_i32(0, 2, WebGl2RenderingContext::INT, false, 0, 0);
     context.enable_vertex_attrib_array(position_attribute_location as u32);
 
-    context.bind_vertex_array(Some(&vao));
-
-    // let u_canvas_height_loc = context.get_uniform_location(&program, "u_canvas_height");
-    // context.uniform1i(u_canvas_height_loc.as_ref(), viewport.borrow().height());
-
-    // let mut camera = Camera::new();
-    // // {
-    // //     orthographic_size: 50.0,
-    // //     camera_pos: Vec3::new(16.0, -5.0, 0.0)
-    // // };
-    // camera.orthographic_size = 5.0;
-    // console_log!("{}", camera.orthographic_size);
-
-    // let mut orthographic_size = 50.0;
-    // let projection = Mat4::orthographic_rh_gl(-viewport.borrow().aspect_ratio() * viewport.borrow().orthographic_size(), viewport.borrow().aspect_ratio() * viewport.borrow().orthographic_size(), -1.0 * viewport.borrow().orthographic_size(), 1.0 * viewport.borrow().orthographic_size(), -1.0, 1.0);
-    // let projection = Rc::new(RefCell::new(projection));
-
     let u_orthographic_size_loc = context.get_uniform_location(&program, "u_orthographic_size");
     viewport.borrow_mut().set_orthographic_size_change(Some(Box::new(move |viewport: &Viewport| {
         viewport.context().uniform1f(u_orthographic_size_loc.as_ref(), viewport.orthographic_size());
@@ -125,13 +108,6 @@ OO........O...O.OO....O.O...........
         viewport.context().uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, viewport.projection().as_ref());
     })));
 
-    // let camera_pos = Vec3::new(16.0, -5.0, 0.0);
-    // let view = Mat4::from_translation(viewport.borrow().camera_pos()).inverse();
-    // let view = Rc::new(RefCell::new(view));
-
-    // let context = Rc::new(context);
-    let context_inner = Rc::clone(&context);
-    // let u_view_loc_outer = u_view_loc.clone();
     let viewport = Rc::clone(&viewport);
     let viewport_outer = Rc::clone(&viewport);
     let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::WheelEvent| {
@@ -146,11 +122,6 @@ OO........O...O.OO....O.O...........
         orthographic_size = orthographic_size.clamp(7.5, 7500.0);
         viewport.borrow_mut().set_orthographic_size(orthographic_size);
 
-        // *projection.borrow_mut() = Mat4::orthographic_rh_gl(-viewport.borrow().aspect_ratio() * viewport.borrow().orthographic_size(), viewport.borrow().aspect_ratio() * viewport.borrow().orthographic_size(), -1.0 * viewport.borrow().orthographic_size(), 1.0 * viewport.borrow().orthographic_size(), -1.0, 1.0);
-
-        // context_inner.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, projection.borrow().as_ref());
-        // context_inner.uniform1f(u_orthographic_size_loc.as_ref(), viewport.borrow().orthographic_size());
-
         let world_to_clip = viewport.borrow().projection() * viewport.borrow().view();
         let clip_to_world = world_to_clip.clone().inverse();
         let mouse_world_after = clip_to_world * screen_to_clip * Vec4::new(event.offset_x() as f32, event.offset_y() as f32, 0.0, 1.0);
@@ -161,17 +132,11 @@ OO........O...O.OO....O.O...........
         camera_pos.x -= change.x;
         camera_pos.y -= change.y;
         viewport.borrow_mut().set_camera_pos(camera_pos);
-        // *view.borrow_mut() = Mat4::from_translation(*camera_pos.borrow()).inverse();
-
-        // context_inner.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, view.borrow().as_ref());
-        // context_inner.uniform1i(u_canvas_height_loc.as_ref(), viewport.borrow().height());
     });
     canvas.add_event_listener_with_callback("wheel", event_closure.as_ref().unchecked_ref())?;
     event_closure.forget();
     let viewport = viewport_outer;
-    // let u_view_loc = u_view_loc_outer;
 
-    let context_inner = Rc::clone(&context);
     let viewport_outer = Rc::clone(&viewport);
     let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
         let primary = event.buttons() & (1u16 << 0) > 0;
@@ -179,31 +144,22 @@ OO........O...O.OO....O.O...........
         // let wheel = event.buttons() & (1u16 << 2) > 0;
 
         if primary {
-            // console_log!("[{}, {}]", event.movement_x(), -event.movement_y());
-            // console_log!("[{}, {}]", event.offset_x(), event.offset_y());
-
             let world_to_clip = viewport.borrow().projection() * viewport.borrow().view();
             let clip_to_world = world_to_clip.clone().inverse();
 
             let screen_to_clip = Mat4::orthographic_rh_gl(0.0, viewport.borrow().width() as f32, viewport.borrow().height() as f32, 0.0, -1.0, 1.0);
             let zero_zero_world = clip_to_world * screen_to_clip * Vec4::new(0.0, 0.0, 0.0, 1.0);
             let change_from_zero_zero_world = clip_to_world * screen_to_clip * Vec4::new(event.movement_x() as f32, event.movement_y() as f32, 0.0, 1.0);
-            // console_log!("[{}, {}] [{}, {}]", event.movement_x(), event.movement_y(), world_change.x, world_change.y);
 
             let mut camera_pos = *viewport.borrow().camera_pos();
             camera_pos.x -= change_from_zero_zero_world.x - zero_zero_world.x;
             camera_pos.y -= change_from_zero_zero_world.y - zero_zero_world.y;
             viewport.borrow_mut().set_camera_pos(camera_pos);
-            // *view.borrow_mut() = Mat4::from_translation(*camera_pos.borrow()).inverse();
-
-            // context_inner.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, view.borrow().as_ref());
         }
     });
     canvas.add_event_listener_with_callback("mousemove", event_closure.as_ref().unchecked_ref())?;
     event_closure.forget();
     let viewport = viewport_outer;
-
-    // console_log!("{}", camera_pos.x);
 
     let animation_loop_closure = Rc::new(RefCell::new(None::<Closure::<dyn FnMut(_)>>));
     let animation_loop_closure_outer = animation_loop_closure.clone();

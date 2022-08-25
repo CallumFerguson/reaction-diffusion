@@ -27,18 +27,7 @@ pub fn start() -> Result<(), JsValue> {
     let canvas = viewport.borrow().canvas();
     let context = viewport.borrow().context();
 
-    let vert_shader = compile_shader(
-        &context,
-        WebGl2RenderingContext::VERTEX_SHADER,
-        include_str!("shader.vert"),
-    )?;
-
-    let frag_shader = compile_shader(
-        &context,
-        WebGl2RenderingContext::FRAGMENT_SHADER,
-        include_str!("shader.frag"),
-    )?;
-    let program = link_program(&context, &vert_shader, &frag_shader)?;
+    let program = create_shader_program(&context, include_str!("shader.vert"), include_str!("shader.frag"));
     context.use_program(Some(&program));
 
     let mut vertices: Vec<i32> = Vec::new();
@@ -208,7 +197,9 @@ OO........O...O.OO....O.O...........
         }
 
         let vert_count = (vertices.len() / 2) as i32;
-        draw(&context, vert_count);
+        context.clear_color(0.0, 0.0, 0.0, 1.0);
+        context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
+        context.draw_arrays(WebGl2RenderingContext::POINTS, 0, vert_count);
 
         window.request_animation_frame(animation_loop_closure.borrow().as_ref().unwrap().as_ref().unchecked_ref()).expect("request_animation_frame failed");
     }));
@@ -216,13 +207,6 @@ OO........O...O.OO....O.O...........
     window.request_animation_frame(animation_loop_closure_outer.borrow().as_ref().unwrap().as_ref().unchecked_ref()).expect("request_animation_frame failed");
 
     Ok(())
-}
-
-fn draw(context: &WebGl2RenderingContext, vert_count: i32) {
-    context.clear_color(0.0, 0.0, 0.0, 1.0);
-    context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
-
-    context.draw_arrays(WebGl2RenderingContext::POINTS, 0, vert_count);
 }
 
 pub fn compile_shader(
@@ -273,6 +257,22 @@ pub fn link_program(
             .get_program_info_log(&program)
             .unwrap_or_else(|| String::from("Unknown error creating program object")))
     }
+}
+
+fn create_shader_program(context: &WebGl2RenderingContext, vertex_shader_string: &str, fragment_shader_string: &str) -> WebGlProgram {
+    let vert_shader = compile_shader(
+        context,
+        WebGl2RenderingContext::VERTEX_SHADER,
+        vertex_shader_string,
+    ).unwrap();
+
+    let frag_shader = compile_shader(
+        context,
+        WebGl2RenderingContext::FRAGMENT_SHADER,
+        fragment_shader_string,
+    ).unwrap();
+
+    return link_program(&context, &vert_shader, &frag_shader).unwrap();
 }
 
 fn get_num_neighbours(cell: &(i32, i32), alive_cells: &HashSet<(i32, i32)>) -> i32 {

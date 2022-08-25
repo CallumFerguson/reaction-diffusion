@@ -45,8 +45,8 @@ pub struct Viewport {
 
     camera_pos: Vec3,
 
-    view: Mat4,
-    projection: Mat4,
+    view_updater: RefCell<Updater<Mat4>>,
+    projection_updater: RefCell<Updater<Mat4>>,
 
     orthographic_size_updater: RefCell<Updater<f32>>,
 }
@@ -59,7 +59,6 @@ impl Viewport {
 
         let width = window.inner_width().unwrap().as_f64().unwrap() as i32;
         let height = window.inner_height().unwrap().as_f64().unwrap() as i32;
-        let aspect_ratio = width as f32 / height as f32;
 
         let canvas = document.create_element("canvas").unwrap();
         canvas.set_attribute("width", &width.to_string()).unwrap();
@@ -75,19 +74,21 @@ impl Viewport {
         let orthographic_size = 50.0;
         let camera_pos = Vec3::new(16.0, -5.0, 0.0);
 
-        let view = Mat4::from_translation(camera_pos).inverse();
-        let projection = Mat4::orthographic_rh_gl(-aspect_ratio * orthographic_size, aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
+        // let view = Mat4::from_translation(camera_pos).inverse();
+        // let projection = Mat4::orthographic_rh_gl(-aspect_ratio * orthographic_size, aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
 
-        let viewport = Self {
+        let mut viewport = Self {
             width,
             height_updater: RefCell::new(Updater { value: height, update: None, needs_update: true }),
             canvas: Rc::new(canvas),
             context: Rc::new(context),
             camera_pos,
-            view,
-            projection,
+            view_updater: RefCell::new(Updater {value: Mat4::IDENTITY, update: None, needs_update: true}),
+            projection_updater: RefCell::new(Updater {value: Mat4::IDENTITY, update: None, needs_update: true}),
             orthographic_size_updater: RefCell::new(Updater { value: orthographic_size, update: None, needs_update: true }),
         };
+        viewport.recalculate_view();
+        viewport.recalculate_projection();
         let viewport = Rc::new(RefCell::new(viewport));
 
         let window_outer = Rc::clone(&window);
@@ -103,6 +104,9 @@ impl Viewport {
             viewport.borrow().canvas.set_attribute("height", &height.to_string()).unwrap();
 
             viewport.borrow().context.viewport(0, 0, width, height);
+
+            viewport.borrow_mut().recalculate_view();
+            viewport.borrow_mut().recalculate_projection();
         });
         let viewport = screen_outer;
         let window = window_outer;
@@ -119,8 +123,8 @@ impl Viewport {
     pub fn context(&self) -> Rc<WebGl2RenderingContext> { Rc::clone(&self.context) }
     pub fn camera_pos(&self) -> &Vec3 { &self.camera_pos }
     pub fn orthographic_size(&self) -> f32 { *self.orthographic_size_updater.borrow().get_value() }
-    pub fn view(&self) -> &Mat4 { &self.view }
-    pub fn projection(&self) -> &Mat4 { &self.projection }
+    pub fn view(&self) -> Mat4 { *self.view_updater.borrow().get_value() }
+    pub fn projection(&self) -> Mat4 { *self.projection_updater.borrow().get_value() }
 
     pub fn set_height_change(&mut self, height_change: Option<Box<dyn Fn(&Self)>>) {
         self.height_updater.borrow_mut().set_update(height_change);
@@ -130,13 +134,41 @@ impl Viewport {
         self.orthographic_size_updater.borrow_mut().set_update(orthographic_size_change);
     }
 
+    pub fn set_view_change(&mut self, view_change: Option<Box<dyn Fn(&Self)>>) {
+        self.view_updater.borrow_mut().set_update(view_change);
+    }
+
+    pub fn set_projection_change(&mut self, projection_change: Option<Box<dyn Fn(&Self)>>) {
+        self.projection_updater.borrow_mut().set_update(projection_change);
+    }
+
     pub fn set_orthographic_size(&mut self, orthographic_size: f32) {
         self.orthographic_size_updater.borrow_mut().set_value(orthographic_size);
+        self.recalculate_projection();
+    }
+
+    pub fn set_camera_pos(&mut self, camera_pos: Vec3) {
+        self.camera_pos = camera_pos;
+        self.recalculate_view();
     }
 
     pub fn update_uniforms_in_shader(&self) {
         handle_updater(&self.height_updater, self);
         handle_updater(&self.orthographic_size_updater, self);
+        handle_updater(&self.view_updater, self);
+        handle_updater(&self.projection_updater, self);
+    }
+
+    fn recalculate_view(&mut self) {
+        let view = Mat4::from_translation(self.camera_pos).inverse();
+        self.view_updater.borrow_mut().set_value(view);
+    }
+
+    fn recalculate_projection(&mut self) {
+        let aspect_ratio = self.aspect_ratio();
+        let orthographic_size = self.orthographic_size();
+        let projection = Mat4::orthographic_rh_gl(-aspect_ratio * orthographic_size, aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);
+        self.projection_updater.borrow_mut().set_value(projection);
     }
 }
 

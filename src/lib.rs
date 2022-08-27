@@ -6,13 +6,15 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
 use glam::{Mat4, Vec4};
-
-mod viewport;
-
-pub use crate::viewport::Viewport;
+use crate::engine::viewport::Viewport;
+use crate::engine::component::Component;
+use crate::engine::game_object::GameObject;
+use crate::game_of_life::GameOfLife;
 
 #[macro_use]
 mod utils;
+mod engine;
+mod game_of_life;
 
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
@@ -159,6 +161,13 @@ OO........O...O.OO....O.O...........
     let mut start_time = -1.0;
     let mut last_unscaled_time = 0.0;
 
+    let mut game_objects = Vec::<GameObject>::new();
+
+    let mut game_of_life = GameObject::new();
+    game_of_life.add_component(Box::new(GameOfLife::new()));
+
+    game_objects.push(game_of_life);
+
     *animation_loop_closure_outer.borrow_mut() = Some(Closure::<dyn FnMut(_)>::new(move |now: f64| {
         let now = now * 0.001;
         if start_time < 0.0 {
@@ -200,6 +209,18 @@ OO........O...O.OO....O.O...........
         context.clear_color(0.0, 0.0, 0.0, 1.0);
         context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
         context.draw_arrays(WebGl2RenderingContext::POINTS, 0, vert_count);
+
+        for game_object in &game_objects {
+            for component in game_object.components_iter() {
+                component.on_update();
+            }
+        }
+
+        for game_object in &game_objects {
+            for component in game_object.components_iter() {
+                component.on_render_object();
+            }
+        }
 
         window.request_animation_frame(animation_loop_closure.borrow().as_ref().unwrap().as_ref().unchecked_ref()).expect("request_animation_frame failed");
     }));

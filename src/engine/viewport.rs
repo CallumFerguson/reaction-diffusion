@@ -7,7 +7,7 @@ use glam::{Mat4, Vec3};
 
 struct Updater<T> {
     value: T,
-    update: Option<Box<dyn Fn(&Viewport)>>,
+    update: Vec<Option<Box<dyn Fn(&Viewport)>>>,
     needs_update: bool,
 }
 
@@ -20,16 +20,18 @@ impl<T> Updater<T> {
     }
 
     pub fn set_update(&mut self, update: Option<Box<dyn Fn(&Viewport)>>) {
-        self.update = update;
+        self.update.push(update);
         self.needs_update = true;
     }
 
     pub fn update_if_not_none(&self, viewport: &Viewport) {
-        match &self.update {
-            Some(value) => {
-                (value.as_ref())(viewport);
+        for u in &self.update {
+            match u {
+                Some(value) => {
+                    (value.as_ref())(viewport);
+                }
+                None => ()
             }
-            None => ()
         }
     }
 }
@@ -77,13 +79,13 @@ impl Viewport {
 
         let mut viewport = Self {
             width,
-            height_updater: RefCell::new(Updater { value: height, update: None, needs_update: true }),
+            height_updater: RefCell::new(Updater { value: height, update: Vec::new(), needs_update: true }),
             canvas: Rc::new(canvas),
             context: Rc::new(context),
             camera_pos,
-            view_updater: RefCell::new(Updater {value: Mat4::IDENTITY, update: None, needs_update: true}),
-            projection_updater: RefCell::new(Updater {value: Mat4::IDENTITY, update: None, needs_update: true}),
-            orthographic_size_updater: RefCell::new(Updater { value: orthographic_size, update: None, needs_update: true }),
+            view_updater: RefCell::new(Updater {value: Mat4::IDENTITY, update: Vec::new(), needs_update: true}),
+            projection_updater: RefCell::new(Updater {value: Mat4::IDENTITY, update: Vec::new(), needs_update: true}),
+            orthographic_size_updater: RefCell::new(Updater { value: orthographic_size, update: Vec::new(), needs_update: true }),
         };
         viewport.recalculate_view();
         viewport.recalculate_projection();

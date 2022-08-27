@@ -1,5 +1,5 @@
-use std::slice::Iter;
-use crate::Component;
+use std::slice::IterMut;
+use crate::{Component, EngineState};
 
 pub struct GameObject {
     components: Vec<Box<dyn Component>>
@@ -14,12 +14,12 @@ impl GameObject {
 }
 
 impl GameObject {
-    pub fn add_component(&mut self, component: Box<dyn Component>) {
-        component.on_add_to_game_object();
+    pub fn add_component(&mut self, engine_state: &EngineState, mut component: Box<dyn Component>) {
+        component.on_add_to_game_object(engine_state);
         self.components.push(component);
     }
 
-    pub fn components_iter(&self) -> Iter<Box<dyn Component>> {
-        return self.components.iter();
+    pub fn components_iter(&mut self) -> IterMut<Box<dyn Component>> {
+        return self.components.iter_mut();
     }
 }

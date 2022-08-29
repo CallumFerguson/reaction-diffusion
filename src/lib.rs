@@ -1,21 +1,19 @@
 use wasm_bindgen::prelude::*;
 use console_error_panic_hook::hook;
 use std::rc::Rc;
-use crate::camera_pan::CameraPan;
-use crate::clear_canvas::ClearCanvas;
+use crate::components::camera_pan::CameraPan;
+use crate::components::clear_canvas::ClearCanvas;
 use crate::engine::component::Component;
 use crate::engine::game_object::GameObject;
-use crate::game_of_life::GameOfLife;
+use crate::components::game_of_life::GameOfLife;
 use crate::rendering::viewport::Viewport;
 use crate::utils::create_shader_program;
 
 #[macro_use]
 mod utils;
 mod engine;
-mod game_of_life;
 mod rendering;
-mod camera_pan;
-mod clear_canvas;
+pub mod components;
 
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
@@ -29,7 +27,7 @@ pub fn start() -> Result<(), JsValue> {
     let viewport = Viewport::new();
     let context = viewport.borrow().context();
 
-    let program = Rc::new(create_shader_program(&context, include_str!("shader.vert"), include_str!("shader.frag")));
+    let program = Rc::new(create_shader_program(&context, include_str!("shaders/shader.vert"), include_str!("shaders/shader.frag")));
     context.use_program(Some(&program));
 
     let mut game_manager = GameObject::new();

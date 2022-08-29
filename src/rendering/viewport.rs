@@ -72,7 +72,8 @@ impl Viewport {
             .dyn_into::<WebGl2RenderingContext>().unwrap();
 
         let orthographic_size = 50.0;
-        let camera_pos = Vec3::new(16.0, -5.0, 0.0);
+        // let camera_pos = Vec3::new(16.0, -5.0, 0.0);
+        let camera_pos = Vec3::new(0.0, 0.0, 0.0);
 
         // let view = Mat4::from_translation(camera_pos).inverse();
         // let projection = Mat4::orthographic_rh_gl(-aspect_ratio * orthographic_size, aspect_ratio * orthographic_size, -1.0 * orthographic_size, 1.0 * orthographic_size, -1.0, 1.0);

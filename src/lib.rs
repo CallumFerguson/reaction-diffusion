@@ -9,6 +9,7 @@ use crate::components::game_of_life::GameOfLife;
 use crate::rendering::viewport::Viewport;
 use crate::utils::create_shader_program;
 use crate::components::square::Square;
+use crate::components::reaction_diffusion::ReactionDiffusion;
 
 #[macro_use]
 mod utils;
@@ -36,22 +37,26 @@ pub fn start() -> Result<(), JsValue> {
     game_manager.add_component(Box::new(ClearCanvas::new(Rc::clone(&viewport))));
     app.add_game_object(game_manager);
 
-    let start_cells = "........................O...........
-                       ......................O.O...........
-                       ............OO......OO............OO
-                       ...........O...O....OO............OO
-                       OO........O.....O...OO..............
-                       OO........O...O.OO....O.O...........
-                       ..........O.....O.......O...........
-                       ...........O...O....................
-                       ............OO......................";
-    let mut game_of_life_object = GameObject::new();
-    game_of_life_object.add_component(Box::new(GameOfLife::new(Rc::clone(&viewport), Rc::clone(&program), start_cells, (0, 0))));
-    app.add_game_object(game_of_life_object);
+    // let start_cells = "........................O...........
+    //                    ......................O.O...........
+    //                    ............OO......OO............OO
+    //                    ...........O...O....OO............OO
+    //                    OO........O.....O...OO..............
+    //                    OO........O...O.OO....O.O...........
+    //                    ..........O.....O.......O...........
+    //                    ...........O...O....................
+    //                    ............OO......................";
+    // let mut game_of_life_object = GameObject::new();
+    // game_of_life_object.add_component(Box::new(GameOfLife::new(Rc::clone(&viewport), Rc::clone(&program), start_cells, (0, 0))));
+    // app.add_game_object(game_of_life_object);
 
-    let mut square_object = GameObject::new();
-    square_object.add_component(Box::new(Square::new(Rc::clone(&viewport), Rc::clone(&program))));
-    app.add_game_object(square_object);
+    // let mut square_object = GameObject::new();
+    // square_object.add_component(Box::new(Square::new(Rc::clone(&viewport), Rc::clone(&program))));
+    // app.add_game_object(square_object);
+
+    let mut reaction_diffusion_object = GameObject::new();
+    reaction_diffusion_object.add_component(Box::new(ReactionDiffusion::new(Rc::clone(&viewport), Rc::clone(&program))));
+    app.add_game_object(reaction_diffusion_object);
 
     Ok(())
 }

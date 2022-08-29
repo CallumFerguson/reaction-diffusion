@@ -1,10 +1,11 @@
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
 use glam::{Mat4, Vec4};
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::Closure;
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlVertexArrayObject};
-use crate::{Component, EngineState, Viewport};
+use crate::{Component, Viewport};
 use crate::utils::create_shader_program;
 
 const BUFFER_SIZE: i32 = 1024 * 1024 * 100; // 100Mib
@@ -16,11 +17,12 @@ pub struct GameOfLife {
     alive_cells_next: HashSet<(i32, i32)>,
     vao: Rc<Option<WebGlVertexArrayObject>>,
     program: Rc<Option<WebGlProgram>>,
-    buffer: Option<WebGlBuffer>
+    buffer: Option<WebGlBuffer>,
+    viewport: Rc<RefCell<Viewport>>
 }
 
 impl GameOfLife {
-    pub fn new(id: i32) -> Self {
+    pub fn new(viewport: Rc<RefCell<Viewport>>, id: i32) -> Self {
         return Self {
             id,
             vertices: Vec::new(),
@@ -28,14 +30,15 @@ impl GameOfLife {
             alive_cells_next: HashSet::new(),
             vao: Rc::new(None),
             program: Rc::new(None),
-            buffer: None
+            buffer: None,
+            viewport
         };
     }
 }
 
 impl Component for GameOfLife {
-    fn on_add_to_game_object(&mut self, engine_state: &EngineState) {
-        let viewport = engine_state.viewport();
+    fn on_add_to_game_object(&mut self) {
+        let viewport = &self.viewport;
 
         let canvas = viewport.borrow().canvas();
         let context = viewport.borrow().context();
@@ -167,7 +170,7 @@ O.O
         event_closure.forget();
         let viewport = viewport_outer;
 
-        let viewport_outer = Rc::clone(&viewport);
+        // let viewport_outer = Rc::clone(&viewport);
         let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
             let primary = event.buttons() & (1u16 << 0) > 0;
             // let secondary = event.buttons() & (1u16 << 1) > 0;
@@ -191,15 +194,15 @@ O.O
         event_closure.forget();
     }
 
-    fn on_update(&mut self, engine_state: &EngineState) {
-        let viewport = engine_state.viewport();
+    fn on_update(&mut self) {
+        let viewport = &self.viewport;
         let viewport = viewport.borrow();
         let context = viewport.context();
 
         context.bind_vertex_array(self.vao.as_ref().as_ref());
         context.use_program(self.program.as_ref().as_ref());
 
-        engine_state.viewport().borrow().update_uniforms_in_shader();
+        viewport.update_uniforms_in_shader();
 
         context.bind_vertex_array(self.vao.as_ref().as_ref());
         context.use_program(self.program.as_ref().as_ref());
@@ -232,8 +235,14 @@ O.O
         }
     }
 
-    fn on_render_object(&mut self, engine_state: &EngineState) {
-        let context = engine_state.viewport().borrow().context();
+    fn on_render_clear(&mut self) {
+        let context = self.viewport.borrow().context();
+        context.clear_color(0.0, 0.0, 0.0, 1.0);
+        context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
+    }
+
+    fn on_render_object(&mut self) {
+        let context = self.viewport.borrow().context();
 
         context.bind_vertex_array(self.vao.as_ref().as_ref());
         context.use_program(self.program.as_ref().as_ref());

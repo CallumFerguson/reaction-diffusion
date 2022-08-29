@@ -37,7 +37,6 @@ impl GameOfLife {
 impl Component for GameOfLife {
     fn on_add_to_game_object(&mut self) {
         let viewport = &self.viewport;
-
         let context = viewport.borrow().context();
 
         self.vao = Rc::new(Some(context
@@ -84,11 +83,6 @@ impl Component for GameOfLife {
         context.bind_vertex_array(self.vao.as_ref().as_ref());
         context.use_program(Some(&self.program));
 
-        viewport.update_uniforms_in_shader();
-
-        context.bind_vertex_array(self.vao.as_ref().as_ref());
-        context.use_program(Some(&self.program));
-
         game_of_life_step(&self.alive_cells, &mut self.alive_cells_next);
         std::mem::swap(&mut self.alive_cells, &mut self.alive_cells_next);
 
@@ -117,7 +111,7 @@ impl Component for GameOfLife {
         }
     }
 
-    fn on_render_object(&mut self) {
+    fn on_render(&mut self) {
         let context = self.viewport.borrow().context();
 
         context.bind_vertex_array(self.vao.as_ref().as_ref());

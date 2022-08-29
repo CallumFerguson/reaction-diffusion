@@ -111,4 +111,8 @@ impl Component for CameraPan {
         canvas.add_event_listener_with_callback("mousemove", event_closure.as_ref().unchecked_ref()).unwrap();
         event_closure.forget();
     }
+
+    fn on_pre_render(&mut self) {
+        self.viewport.borrow().update_uniforms_in_shader();
+    }
 }

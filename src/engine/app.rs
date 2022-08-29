@@ -47,13 +47,13 @@ impl App {
 
             for game_object in &mut app.game_objects {
                 for component in game_object.components_iter() {
-                    component.on_render_clear();
+                    component.on_pre_render();
                 }
             }
 
             for game_object in &mut app.game_objects {
                 for component in game_object.components_iter() {
-                    component.on_render_object();
+                    component.on_render();
                 }
             }
 

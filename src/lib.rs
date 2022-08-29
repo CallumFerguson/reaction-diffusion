@@ -8,12 +8,13 @@ use crate::engine::game_object::GameObject;
 use crate::components::game_of_life::GameOfLife;
 use crate::rendering::viewport::Viewport;
 use crate::utils::create_shader_program;
+use crate::components::square::Square;
 
 #[macro_use]
 mod utils;
 mod engine;
 mod rendering;
-pub mod components;
+mod components;
 
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
@@ -47,6 +48,10 @@ pub fn start() -> Result<(), JsValue> {
     let mut game_of_life_object = GameObject::new();
     game_of_life_object.add_component(Box::new(GameOfLife::new(Rc::clone(&viewport), Rc::clone(&program), start_cells, (0, 0))));
     app.add_game_object(game_of_life_object);
+
+    let mut square_object = GameObject::new();
+    square_object.add_component(Box::new(Square::new(Rc::clone(&viewport), Rc::clone(&program))));
+    app.add_game_object(square_object);
 
     Ok(())
 }

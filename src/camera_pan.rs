@@ -1,12 +1,10 @@
 use std::cell::RefCell;
-use std::collections::HashSet;
 use std::rc::Rc;
 use glam::{Mat4, Vec4};
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::Closure;
-use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlVertexArrayObject};
+use web_sys::WebGlProgram;
 use crate::{Component, Viewport};
-use crate::utils::create_shader_program;
 
 pub struct CameraPan {
     viewport: Rc<RefCell<Viewport>>,

@@ -11,27 +11,29 @@ use crate::utils::create_shader_program;
 const BUFFER_SIZE: i32 = 1024 * 1024 * 100; // 100Mib
 
 pub struct GameOfLife {
-    id: i32,
+    start_cells: &'static str,
+    start_cells_offset: (i32, i32),
     vertices: Vec<i32>,
     alive_cells: HashSet<(i32, i32)>,
     alive_cells_next: HashSet<(i32, i32)>,
     vao: Rc<Option<WebGlVertexArrayObject>>,
-    program: Rc<Option<WebGlProgram>>,
+    program: Rc<WebGlProgram>,
     buffer: Option<WebGlBuffer>,
     viewport: Rc<RefCell<Viewport>>
 }
 
 impl GameOfLife {
-    pub fn new(viewport: Rc<RefCell<Viewport>>, id: i32) -> Self {
+    pub fn new(viewport: Rc<RefCell<Viewport>>, program: Rc<WebGlProgram>, start_cells: &'static str, start_cells_offset: (i32, i32)) -> Self {
         return Self {
-            id,
+            start_cells,
+            start_cells_offset,
             vertices: Vec::new(),
             alive_cells: HashSet::new(),
             alive_cells_next: HashSet::new(),
             vao: Rc::new(None),
-            program: Rc::new(None),
+            program,
             buffer: None,
-            viewport
+            viewport,
         };
     }
 }
@@ -40,7 +42,6 @@ impl Component for GameOfLife {
     fn on_add_to_game_object(&mut self) {
         let viewport = &self.viewport;
 
-        let canvas = viewport.borrow().canvas();
         let context = viewport.borrow().context();
 
         self.vao = Rc::new(Some(context
@@ -48,47 +49,24 @@ impl Component for GameOfLife {
             .ok_or("Could not create vertex array object").unwrap()));
         context.bind_vertex_array(self.vao.as_ref().as_ref());
 
-        self.program = Rc::new(Some(create_shader_program(&context, include_str!("shader.vert"), include_str!("shader.frag"))));
-        context.use_program(self.program.as_ref().as_ref());
-
-        let mut start_cells = "........................O...........
-......................O.O...........
-............OO......OO............OO
-...........O...O....OO............OO
-OO........O.....O...OO..............
-OO........O...O.OO....O.O...........
-..........O.....O.......O...........
-...........O...O....................
-............OO......................";
-
-        let u_color_loc = context.get_uniform_location(self.program.as_ref().as_ref().unwrap(), "u_color");
-
-        if self.id == 0 {
-            start_cells = "..O
-O.O
-.OO";
-            context.uniform3f(u_color_loc.as_ref(), 1.0, 0.0, 0.0);
-        }
-
-        if self.id == 1 {
-            start_cells = "..............OOO";
-            context.uniform3f(u_color_loc.as_ref(), 0.0, 1.0, 0.0);
-        }
+        context.use_program(Some(&self.program));
 
         let mut x = 0;
         let mut y = 0;
-        for char in start_cells.chars() {
+        for char in self.start_cells.chars() {
             if char == 'O' {
-                self.alive_cells.insert((x, y));
+                self.alive_cells.insert((x + self.start_cells_offset.0, y + self.start_cells_offset.1));
             }
-            x += 1;
+            if char == 'O' || char == '.' {
+                x += 1;
+            }
             if char == '\n' {
                 x = 0;
                 y -= 1;
             }
         }
 
-        let position_attribute_location = context.get_attrib_location(self.program.as_ref().as_ref().unwrap(), "position");
+        let position_attribute_location = context.get_attrib_location(&self.program, "position");
         self.buffer = Some(context.create_buffer().ok_or("Failed to create buffer").unwrap());
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, self.buffer.as_ref());
 
@@ -100,98 +78,6 @@ O.O
 
         context.vertex_attrib_pointer_with_i32(0, 2, WebGl2RenderingContext::INT, false, 0, 0);
         context.enable_vertex_attrib_array(position_attribute_location as u32);
-
-        let u_orthographic_size_loc = context.get_uniform_location(self.program.as_ref().as_ref().unwrap(), "u_orthographic_size");
-        context.uniform1f(u_orthographic_size_loc.as_ref(), viewport.borrow().orthographic_size());
-        let vao = Rc::clone(&self.vao);
-        let program = Rc::clone(&self.program);
-        viewport.borrow_mut().set_orthographic_size_change(Some(Box::new(move |viewport: &Viewport| {
-            viewport.context().bind_vertex_array(vao.as_ref().as_ref());
-            viewport.context().use_program(program.as_ref().as_ref());
-            viewport.context().uniform1f(u_orthographic_size_loc.as_ref(), viewport.orthographic_size());
-        })));
-
-        let u_canvas_height_loc = context.get_uniform_location(self.program.as_ref().as_ref().unwrap(), "u_canvas_height");
-        context.uniform1i(u_canvas_height_loc.as_ref(), viewport.borrow().height());
-        let vao = Rc::clone(&self.vao);
-        let program = Rc::clone(&self.program);
-        viewport.borrow_mut().set_height_change(Some(Box::new(move |viewport: &Viewport| {
-            viewport.context().bind_vertex_array(vao.as_ref().as_ref());
-            viewport.context().use_program(program.as_ref().as_ref());
-            viewport.context().uniform1i(u_canvas_height_loc.as_ref(), viewport.height());
-        })));
-
-        let u_view_loc = context.get_uniform_location(self.program.as_ref().as_ref().unwrap(), "u_view");
-        context.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, viewport.borrow().view().as_ref());
-        let vao = Rc::clone(&self.vao);
-        let program = Rc::clone(&self.program);
-        viewport.borrow_mut().set_view_change(Some(Box::new(move |viewport: &Viewport| {
-            viewport.context().bind_vertex_array(vao.as_ref().as_ref());
-            viewport.context().use_program(program.as_ref().as_ref());
-            viewport.context().uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, viewport.view().as_ref());
-        })));
-
-        let u_projection_loc = context.get_uniform_location(self.program.as_ref().as_ref().unwrap(), "u_projection");
-        context.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, viewport.borrow().projection().as_ref());
-        let vao = Rc::clone(&self.vao);
-        let program = Rc::clone(&self.program);
-        viewport.borrow_mut().set_projection_change(Some(Box::new(move |viewport: &Viewport| {
-            viewport.context().bind_vertex_array(vao.as_ref().as_ref());
-            viewport.context().use_program(program.as_ref().as_ref());
-            viewport.context().uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, viewport.projection().as_ref());
-        })));
-
-        let viewport = Rc::clone(&viewport);
-        let viewport_outer = Rc::clone(&viewport);
-        let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::WheelEvent| {
-            let world_to_clip = viewport.borrow().projection() * viewport.borrow().view();
-            let clip_to_world = world_to_clip.clone().inverse();
-
-            let screen_to_clip = Mat4::orthographic_rh_gl(0.0, viewport.borrow().width() as f32, viewport.borrow().height() as f32, 0.0, -1.0, 1.0);
-            let mouse_world_before = clip_to_world * screen_to_clip * Vec4::new(event.offset_x() as f32, event.offset_y() as f32, 0.0, 1.0);
-
-            let mut orthographic_size = viewport.borrow().orthographic_size();
-            orthographic_size += event.delta_y() as f32 / 500.0 * orthographic_size;
-            orthographic_size = orthographic_size.clamp(7.5, 7500.0);
-            viewport.borrow_mut().set_orthographic_size(orthographic_size);
-
-            let world_to_clip = viewport.borrow().projection() * viewport.borrow().view();
-            let clip_to_world = world_to_clip.clone().inverse();
-            let mouse_world_after = clip_to_world * screen_to_clip * Vec4::new(event.offset_x() as f32, event.offset_y() as f32, 0.0, 1.0);
-
-            let change = mouse_world_after - mouse_world_before;
-
-            let mut camera_pos = *viewport.borrow().camera_pos();
-            camera_pos.x -= change.x;
-            camera_pos.y -= change.y;
-            viewport.borrow_mut().set_camera_pos(camera_pos);
-        });
-        canvas.add_event_listener_with_callback("wheel", event_closure.as_ref().unchecked_ref()).unwrap();
-        event_closure.forget();
-        let viewport = viewport_outer;
-
-        // let viewport_outer = Rc::clone(&viewport);
-        let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
-            let primary = event.buttons() & (1u16 << 0) > 0;
-            // let secondary = event.buttons() & (1u16 << 1) > 0;
-            // let wheel = event.buttons() & (1u16 << 2) > 0;
-
-            if primary {
-                let world_to_clip = viewport.borrow().projection() * viewport.borrow().view();
-                let clip_to_world = world_to_clip.clone().inverse();
-
-                let screen_to_clip = Mat4::orthographic_rh_gl(0.0, viewport.borrow().width() as f32, viewport.borrow().height() as f32, 0.0, -1.0, 1.0);
-                let zero_zero_world = clip_to_world * screen_to_clip * Vec4::new(0.0, 0.0, 0.0, 1.0);
-                let change_from_zero_zero_world = clip_to_world * screen_to_clip * Vec4::new(event.movement_x() as f32, event.movement_y() as f32, 0.0, 1.0);
-
-                let mut camera_pos = *viewport.borrow().camera_pos();
-                camera_pos.x -= change_from_zero_zero_world.x - zero_zero_world.x;
-                camera_pos.y -= change_from_zero_zero_world.y - zero_zero_world.y;
-                viewport.borrow_mut().set_camera_pos(camera_pos);
-            }
-        });
-        canvas.add_event_listener_with_callback("mousemove", event_closure.as_ref().unchecked_ref()).unwrap();
-        event_closure.forget();
     }
 
     fn on_update(&mut self) {
@@ -200,12 +86,12 @@ O.O
         let context = viewport.context();
 
         context.bind_vertex_array(self.vao.as_ref().as_ref());
-        context.use_program(self.program.as_ref().as_ref());
+        context.use_program(Some(&self.program));
 
         viewport.update_uniforms_in_shader();
 
         context.bind_vertex_array(self.vao.as_ref().as_ref());
-        context.use_program(self.program.as_ref().as_ref());
+        context.use_program(Some(&self.program));
 
         game_of_life_step(&self.alive_cells, &mut self.alive_cells_next);
         std::mem::swap(&mut self.alive_cells, &mut self.alive_cells_next);
@@ -245,7 +131,7 @@ O.O
         let context = self.viewport.borrow().context();
 
         context.bind_vertex_array(self.vao.as_ref().as_ref());
-        context.use_program(self.program.as_ref().as_ref());
+        context.use_program(Some(&self.program));
 
         let vert_count = (self.vertices.len() / 2) as i32;
         context.draw_arrays(WebGl2RenderingContext::POINTS, 0, vert_count);

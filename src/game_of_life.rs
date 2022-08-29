@@ -121,12 +121,6 @@ impl Component for GameOfLife {
         }
     }
 
-    fn on_render_clear(&mut self) {
-        let context = self.viewport.borrow().context();
-        context.clear_color(0.0, 0.0, 0.0, 1.0);
-        context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
-    }
-
     fn on_render_object(&mut self) {
         let context = self.viewport.borrow().context();
 

@@ -32,5 +32,6 @@ features = [
     'Node',
     'console',
     'MouseEvent',
-    'WheelEvent'
+    'WheelEvent',
+    'WebGlTexture'
 ]

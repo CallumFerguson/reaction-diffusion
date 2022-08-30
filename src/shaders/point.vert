@@ -6,12 +6,8 @@ uniform int u_canvas_height;
 uniform float u_orthographic_size;
 
 in vec4 a_position;
-in vec2 a_uv;
-
-out vec2 v_uv;
 
 void main() {
-    v_uv = a_uv;
     gl_Position = u_projection * u_view * a_position;
     gl_PointSize = (1.0 / u_orthographic_size) * float(u_canvas_height) / 2.0;
 }

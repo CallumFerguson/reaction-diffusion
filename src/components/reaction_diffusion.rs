@@ -7,7 +7,7 @@ pub struct ReactionDiffusion {
     vao: Option<WebGlVertexArrayObject>,
     program: Rc<WebGlProgram>,
     viewport: Rc<RefCell<Viewport>>,
-    indices_count: i32
+    indices_count: i32,
 }
 
 impl ReactionDiffusion {
@@ -16,8 +16,8 @@ impl ReactionDiffusion {
             vao: None,
             program,
             viewport,
-            indices_count: 0
-        }
+            indices_count: 0,
+        };
     }
 }
 
@@ -28,7 +28,7 @@ impl Component for ReactionDiffusion {
         self.vao = context.create_vertex_array();
         context.bind_vertex_array(self.vao.as_ref());
 
-        let position_attribute_location = context.get_attrib_location(&self.program, "position");
+        let position_attribute_location = context.get_attrib_location(&self.program, "a_position");
         let buffer = context.create_buffer();
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, buffer.as_ref());
 
@@ -44,7 +44,7 @@ impl Component for ReactionDiffusion {
             );
         }
 
-        context.vertex_attrib_pointer_with_i32(0, 3, WebGl2RenderingContext::FLOAT, false, 0, 0);
+        context.vertex_attrib_pointer_with_i32(position_attribute_location as u32, 3, WebGl2RenderingContext::FLOAT, false, 0, 0);
         context.enable_vertex_attrib_array(position_attribute_location as u32);
 
         let buffer = context.create_buffer();

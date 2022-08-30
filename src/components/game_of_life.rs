@@ -61,7 +61,7 @@ impl Component for GameOfLife {
             }
         }
 
-        let position_attribute_location = context.get_attrib_location(&self.program, "position");
+        let position_attribute_location = context.get_attrib_location(&self.program, "a_position");
         self.buffer = Some(context.create_buffer().ok_or("Failed to create buffer").unwrap());
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, self.buffer.as_ref());
 
@@ -71,7 +71,7 @@ impl Component for GameOfLife {
             WebGl2RenderingContext::STREAM_DRAW,
         );
 
-        context.vertex_attrib_pointer_with_i32(0, 2, WebGl2RenderingContext::INT, false, 0, 0);
+        context.vertex_attrib_pointer_with_i32(position_attribute_location as u32, 2, WebGl2RenderingContext::INT, false, 0, 0);
         context.enable_vertex_attrib_array(position_attribute_location as u32);
     }
 

@@ -71,7 +71,7 @@ impl Viewport {
             .unwrap()
             .dyn_into::<WebGl2RenderingContext>().unwrap();
 
-        let orthographic_size = 50.0;
+        let orthographic_size = 512.0 / 2.0 + 10.0; // 50.0
         // let camera_pos = Vec3::new(16.0, -5.0, 0.0);
         let camera_pos = Vec3::new(0.0, 0.0, 0.0);
 

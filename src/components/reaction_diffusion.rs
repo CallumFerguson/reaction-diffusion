@@ -99,6 +99,8 @@ impl Component for ReactionDiffusion {
             cells.push(rng.gen::<u16>());
         }
 
+        // context.pixel_storei(WebGl2RenderingContext::UNPACK_ALIGNMENT, 1);
+
         unsafe {
             let view = js_sys::Uint16Array::view(&cells);
 

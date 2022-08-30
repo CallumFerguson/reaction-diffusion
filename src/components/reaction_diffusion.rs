@@ -13,6 +13,7 @@ pub struct ReactionDiffusion {
     program: Rc<WebGlProgram>,
     viewport: Rc<RefCell<Viewport>>,
     indices_count: i32,
+    cells: Vec<u16>
 }
 
 impl ReactionDiffusion {
@@ -22,6 +23,7 @@ impl ReactionDiffusion {
             program,
             viewport,
             indices_count: 0,
+            cells: Vec::with_capacity((CELLS_WIDTH * CELLS_HEIGHT * 2) as usize)
         };
     }
 }
@@ -89,20 +91,16 @@ impl Component for ReactionDiffusion {
 
         let texture = context.create_texture();
         context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, texture.as_ref());
-
-        // let texture_data: [u16; 2] = [u16::MAX / 2, 50000];
-        let mut cells = Vec::<u16>::with_capacity((CELLS_WIDTH * CELLS_HEIGHT * 2) as usize);
+        // context.pixel_storei(WebGl2RenderingContext::UNPACK_ALIGNMENT, 1);
 
         let mut rng = rand::thread_rng();
         for _ in 0..(CELLS_WIDTH * CELLS_HEIGHT) {
-            cells.push(rng.gen::<u16>());
-            cells.push(rng.gen::<u16>());
+            self.cells.push(rng.gen());
+            self.cells.push(rng.gen());
         }
 
-        // context.pixel_storei(WebGl2RenderingContext::UNPACK_ALIGNMENT, 1);
-
         unsafe {
-            let view = js_sys::Uint16Array::view(&cells);
+            let view = js_sys::Uint16Array::view(&self.cells);
 
             context.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_array_buffer_view_and_src_offset(
                 WebGl2RenderingContext::TEXTURE_2D,
@@ -127,6 +125,34 @@ impl Component for ReactionDiffusion {
 
         let u_model_loc = context.get_uniform_location(self.program.as_ref(), "u_model");
         context.uniform_matrix4fv_with_f32_array(u_model_loc.as_ref(), false, model.as_ref());
+    }
+
+    fn on_update(&mut self) {
+        let context = self.viewport.borrow().context();
+
+        let mut rng = rand::thread_rng();
+        self.cells.clear();
+        for _ in 0..(CELLS_WIDTH * CELLS_HEIGHT) {
+            self.cells.push(rng.gen());
+            self.cells.push(rng.gen());
+        }
+
+        unsafe {
+            let view = js_sys::Uint16Array::view(&self.cells);
+
+            context.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_array_buffer_view_and_src_offset(
+                WebGl2RenderingContext::TEXTURE_2D,
+                0,
+                WebGl2RenderingContext::RG16UI as i32,
+                CELLS_WIDTH,
+                CELLS_HEIGHT,
+                0,
+                WebGl2RenderingContext::RG_INTEGER,
+                WebGl2RenderingContext::UNSIGNED_SHORT,
+                &view,
+                0,
+            ).unwrap();
+        }
     }
 
     fn on_render(&mut self) {

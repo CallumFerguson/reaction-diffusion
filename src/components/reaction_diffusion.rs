@@ -220,5 +220,13 @@ fn float_to_u16float(value: f32) -> u16 {
 }
 
 fn cell_xy_to_index(x: i32, y: i32) -> usize {
-    return ((x.clamp(0, CELLS_WIDTH - 1) + y.clamp(0, CELLS_HEIGHT - 1) * CELLS_WIDTH) * 2) as usize;
+    let mut x = x;
+    let mut y = y;
+    if x < 0 {
+        x += CELLS_WIDTH
+    }
+    if y < 0 {
+        y += CELLS_HEIGHT;
+    }
+    return (((x % CELLS_WIDTH) + (y % CELLS_HEIGHT) * CELLS_WIDTH) * 2) as usize;
 }

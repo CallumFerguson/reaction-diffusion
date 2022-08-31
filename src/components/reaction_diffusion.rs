@@ -8,12 +8,19 @@ use crate::{Component, Viewport};
 const CELLS_WIDTH: i32 = 512;
 const CELLS_HEIGHT: i32 = 512;
 
+const D_A: f32 = 1.0;
+const D_B: f32 = 0.5;
+const F: f32 = 0.055;
+const K: f32 = 0.062;
+const DELTA_T: f32 = 1.0;
+
 pub struct ReactionDiffusion {
     vao: Option<WebGlVertexArrayObject>,
     program: Rc<WebGlProgram>,
     viewport: Rc<RefCell<Viewport>>,
     indices_count: i32,
-    cells: Vec<u16>
+    cells: [u16; (CELLS_WIDTH * CELLS_HEIGHT * 2) as usize],
+    cells_next: [u16; (CELLS_WIDTH * CELLS_HEIGHT * 2) as usize],
 }
 
 impl ReactionDiffusion {
@@ -23,7 +30,8 @@ impl ReactionDiffusion {
             program,
             viewport,
             indices_count: 0,
-            cells: Vec::with_capacity((CELLS_WIDTH * CELLS_HEIGHT * 2) as usize)
+            cells: [0; (CELLS_WIDTH * CELLS_HEIGHT * 2) as usize],
+            cells_next: [0; (CELLS_WIDTH * CELLS_HEIGHT * 2) as usize],
         };
     }
 }
@@ -93,10 +101,17 @@ impl Component for ReactionDiffusion {
         context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, texture.as_ref());
         // context.pixel_storei(WebGl2RenderingContext::UNPACK_ALIGNMENT, 1);
 
-        let mut rng = rand::thread_rng();
-        for _ in 0..(CELLS_WIDTH * CELLS_HEIGHT) {
-            self.cells.push(rng.gen());
-            self.cells.push(rng.gen());
+        // let mut rng = rand::thread_rng();
+        for i in (0..self.cells.len()).step_by(2) {
+            self.cells[i] = float_to_u16float(1.0);
+            self.cells[i + 1] = float_to_u16float(0.0);
+        }
+
+        for x in (CELLS_WIDTH / 2 - 10)..(CELLS_WIDTH / 2 + 10) {
+            for y in (CELLS_HEIGHT / 2 - 10)..(CELLS_HEIGHT / 2 + 10) {
+                let i = cell_xy_to_index(x, y);
+                self.cells[i + 1] = float_to_u16float(1.0);
+            }
         }
 
         unsafe {
@@ -130,12 +145,43 @@ impl Component for ReactionDiffusion {
     fn on_update(&mut self) {
         let context = self.viewport.borrow().context();
 
-        let mut rng = rand::thread_rng();
-        self.cells.clear();
-        for _ in 0..(CELLS_WIDTH * CELLS_HEIGHT) {
-            self.cells.push(rng.gen());
-            self.cells.push(rng.gen());
+        let kernel = [
+            [0.05, 0.2, 0.05],
+            [0.2, -1.0, 0.2],
+            [0.05, 0.2, 0.05]
+        ];
+
+        for x in 0..CELLS_WIDTH {
+            for y in 0..CELLS_HEIGHT {
+                let i = cell_xy_to_index(x, y);
+
+                let a = u16float_to_float(self.cells[i]);
+                let b = u16float_to_float(self.cells[i + 1]);
+
+                let mut nabla_squared_a = 0.0;
+                let mut nabla_squared_b = 0.0;
+
+                for nx in -1..=1 {
+                    for ny in -1..=1 {
+                        let i = cell_xy_to_index(x + nx, y + ny);
+
+                        let a = u16float_to_float(self.cells[i]);
+                        nabla_squared_a += a * kernel[(2 - (ny + 1)) as usize][(nx + 1) as usize];
+
+                        let b = u16float_to_float(self.cells[i + 1]);
+                        nabla_squared_b += b * kernel[(2 - (ny + 1)) as usize][(nx + 1) as usize];
+                    }
+                }
+
+                let a_prime = a + (D_A * nabla_squared_a - a * b * b + F * (1.0 - a)) * DELTA_T;
+                let b_prime = b + (D_B * nabla_squared_b + a * b * b - (K + F) * b) * DELTA_T;
+
+                self.cells_next[i] = float_to_u16float(a_prime);
+                self.cells_next[i + 1] = float_to_u16float(b_prime);
+            }
         }
+
+        std::mem::swap(&mut self.cells, &mut self.cells_next);
 
         unsafe {
             let view = js_sys::Uint16Array::view(&self.cells);
@@ -163,4 +209,16 @@ impl Component for ReactionDiffusion {
 
         context.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
     }
+}
+
+fn u16float_to_float(value: u16) -> f32 {
+    return value as f32 / u16::MAX as f32;
+}
+
+fn float_to_u16float(value: f32) -> u16 {
+    return (value * u16::MAX as f32).round() as u16;
+}
+
+fn cell_xy_to_index(x: i32, y: i32) -> usize {
+    return ((x.clamp(0, CELLS_WIDTH - 1) + y.clamp(0, CELLS_HEIGHT - 1) * CELLS_WIDTH) * 2) as usize;
 }

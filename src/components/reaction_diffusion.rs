@@ -97,10 +97,6 @@ impl Component for ReactionDiffusion {
             );
         }
 
-        let texture = gl.create_texture();
-        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, texture.as_ref());
-        // gl.pixel_storei(WebGl2RenderingContext::UNPACK_ALIGNMENT, 1);
-
         // let mut rng = rand::thread_rng();
         for i in (0..self.cells.len()).step_by(2) {
             self.cells[i] = float_to_u16float(1.0);
@@ -114,6 +110,7 @@ impl Component for ReactionDiffusion {
             }
         }
 
+        let texture = create_and_bind_texture(&gl);
         unsafe {
             let view = js_sys::Uint16Array::view(&self.cells);
 
@@ -130,11 +127,6 @@ impl Component for ReactionDiffusion {
                 0,
             ).unwrap();
         }
-
-        gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::NEAREST as i32);
-        gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::NEAREST as i32);
-        gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_S, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
-        gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_T, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
 
         let model = Mat4::from_scale_rotation_translation(Vec3::new(CELLS_WIDTH as f32, CELLS_HEIGHT as f32, 1.0), Quat::IDENTITY, Vec3::new(0.0, 0.0, 0.0));
 
@@ -231,7 +223,7 @@ fn cell_xy_to_index(x: i32, y: i32) -> usize {
     return (((x % CELLS_WIDTH) + (y % CELLS_HEIGHT) * CELLS_WIDTH) * 2) as usize;
 }
 
-fn create_and_bind_texture(gl: WebGl2RenderingContext) -> Option<WebGlTexture> {
+fn create_and_bind_texture(gl: &WebGl2RenderingContext) -> Option<WebGlTexture> {
     let texture = gl.create_texture();
     gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, texture.as_ref());
     // gl.pixel_storei(WebGl2RenderingContext::UNPACK_ALIGNMENT, 1);

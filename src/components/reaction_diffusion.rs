@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use glam::{Mat4, Quat, Vec3};
 use rand::Rng;
-use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlVertexArrayObject};
+use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlTexture, WebGlVertexArrayObject};
 use crate::{Component, Viewport};
 
 const CELLS_WIDTH: i32 = 512;
@@ -38,51 +38,51 @@ impl ReactionDiffusion {
 
 impl Component for ReactionDiffusion {
     fn on_add_to_game_object(&mut self) {
-        let context = self.viewport.borrow().context();
+        let gl = self.viewport.borrow().gl();
 
-        self.vao = context.create_vertex_array();
-        context.bind_vertex_array(self.vao.as_ref());
+        self.vao = gl.create_vertex_array();
+        gl.bind_vertex_array(self.vao.as_ref());
 
-        let position_attribute_location = context.get_attrib_location(&self.program, "a_position");
-        let buffer = context.create_buffer();
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, buffer.as_ref());
+        let position_attribute_location = gl.get_attrib_location(&self.program, "a_position");
+        let buffer = gl.create_buffer();
+        gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, buffer.as_ref());
 
         let vertices = [-0.5, 0.5, 0.0, 0.5, 0.5, 0.0, 0.5, -0.5, 0.0, -0.5, -0.5, 0.0];
 
         unsafe {
             let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
 
-            context.buffer_data_with_array_buffer_view(
+            gl.buffer_data_with_array_buffer_view(
                 WebGl2RenderingContext::ARRAY_BUFFER,
                 &positions_array_buf_view,
                 WebGl2RenderingContext::STATIC_DRAW,
             );
         }
 
-        context.vertex_attrib_pointer_with_i32(position_attribute_location as u32, 3, WebGl2RenderingContext::FLOAT, false, 0, 0);
-        context.enable_vertex_attrib_array(position_attribute_location as u32);
+        gl.vertex_attrib_pointer_with_i32(position_attribute_location as u32, 3, WebGl2RenderingContext::FLOAT, false, 0, 0);
+        gl.enable_vertex_attrib_array(position_attribute_location as u32);
 
-        let uv_attribute_location = context.get_attrib_location(&self.program, "a_uv");
-        let buffer = context.create_buffer();
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, buffer.as_ref());
+        let uv_attribute_location = gl.get_attrib_location(&self.program, "a_uv");
+        let buffer = gl.create_buffer();
+        gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, buffer.as_ref());
 
         let uv = [0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0];
 
         unsafe {
             let uv_array_buf_view = js_sys::Float32Array::view(&uv);
 
-            context.buffer_data_with_array_buffer_view(
+            gl.buffer_data_with_array_buffer_view(
                 WebGl2RenderingContext::ARRAY_BUFFER,
                 &uv_array_buf_view,
                 WebGl2RenderingContext::STATIC_DRAW,
             );
         }
 
-        context.vertex_attrib_pointer_with_i32(uv_attribute_location as u32, 2, WebGl2RenderingContext::FLOAT, false, 0, 0);
-        context.enable_vertex_attrib_array(uv_attribute_location as u32);
+        gl.vertex_attrib_pointer_with_i32(uv_attribute_location as u32, 2, WebGl2RenderingContext::FLOAT, false, 0, 0);
+        gl.enable_vertex_attrib_array(uv_attribute_location as u32);
 
-        let buffer = context.create_buffer();
-        context.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, buffer.as_ref());
+        let buffer = gl.create_buffer();
+        gl.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, buffer.as_ref());
 
         let indices = [0, 1, 2, 0, 2, 3];
         self.indices_count = indices.len() as i32;
@@ -90,16 +90,16 @@ impl Component for ReactionDiffusion {
         unsafe {
             let indices_array_buf_view = js_sys::Uint16Array::view(&indices);
 
-            context.buffer_data_with_array_buffer_view(
+            gl.buffer_data_with_array_buffer_view(
                 WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
                 &indices_array_buf_view,
                 WebGl2RenderingContext::STATIC_DRAW,
             );
         }
 
-        let texture = context.create_texture();
-        context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, texture.as_ref());
-        // context.pixel_storei(WebGl2RenderingContext::UNPACK_ALIGNMENT, 1);
+        let texture = gl.create_texture();
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, texture.as_ref());
+        // gl.pixel_storei(WebGl2RenderingContext::UNPACK_ALIGNMENT, 1);
 
         // let mut rng = rand::thread_rng();
         for i in (0..self.cells.len()).step_by(2) {
@@ -117,7 +117,7 @@ impl Component for ReactionDiffusion {
         unsafe {
             let view = js_sys::Uint16Array::view(&self.cells);
 
-            context.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_array_buffer_view_and_src_offset(
+            gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_array_buffer_view_and_src_offset(
                 WebGl2RenderingContext::TEXTURE_2D,
                 0,
                 WebGl2RenderingContext::RG16UI as i32,
@@ -131,19 +131,19 @@ impl Component for ReactionDiffusion {
             ).unwrap();
         }
 
-        context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::NEAREST as i32);
-        context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::NEAREST as i32);
-        context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_S, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
-        context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_T, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
+        gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::NEAREST as i32);
+        gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::NEAREST as i32);
+        gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_S, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
+        gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_T, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
 
         let model = Mat4::from_scale_rotation_translation(Vec3::new(CELLS_WIDTH as f32, CELLS_HEIGHT as f32, 1.0), Quat::IDENTITY, Vec3::new(0.0, 0.0, 0.0));
 
-        let u_model_loc = context.get_uniform_location(self.program.as_ref(), "u_model");
-        context.uniform_matrix4fv_with_f32_array(u_model_loc.as_ref(), false, model.as_ref());
+        let u_model_loc = gl.get_uniform_location(self.program.as_ref(), "u_model");
+        gl.uniform_matrix4fv_with_f32_array(u_model_loc.as_ref(), false, model.as_ref());
     }
 
     fn on_update(&mut self) {
-        let context = self.viewport.borrow().context();
+        let gl = self.viewport.borrow().gl();
 
         let kernel = [
             [0.05, 0.2, 0.05],
@@ -186,7 +186,7 @@ impl Component for ReactionDiffusion {
         unsafe {
             let view = js_sys::Uint16Array::view(&self.cells);
 
-            context.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_array_buffer_view_and_src_offset(
+            gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_array_buffer_view_and_src_offset(
                 WebGl2RenderingContext::TEXTURE_2D,
                 0,
                 WebGl2RenderingContext::RG16UI as i32,
@@ -202,12 +202,12 @@ impl Component for ReactionDiffusion {
     }
 
     fn on_render(&mut self) {
-        let context = self.viewport.borrow().context();
+        let gl = self.viewport.borrow().gl();
 
-        context.bind_vertex_array(self.vao.as_ref());
-        context.use_program(Some(&self.program));
+        gl.bind_vertex_array(self.vao.as_ref());
+        gl.use_program(Some(&self.program));
 
-        context.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
+        gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
     }
 }
 
@@ -229,4 +229,17 @@ fn cell_xy_to_index(x: i32, y: i32) -> usize {
         y += CELLS_HEIGHT;
     }
     return (((x % CELLS_WIDTH) + (y % CELLS_HEIGHT) * CELLS_WIDTH) * 2) as usize;
+}
+
+fn create_and_bind_texture(gl: WebGl2RenderingContext) -> Option<WebGlTexture> {
+    let texture = gl.create_texture();
+    gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, texture.as_ref());
+    // gl.pixel_storei(WebGl2RenderingContext::UNPACK_ALIGNMENT, 1);
+
+    gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::NEAREST as i32);
+    gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::NEAREST as i32);
+    gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_S, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
+    gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_T, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
+
+    return texture;
 }

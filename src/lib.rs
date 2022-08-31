@@ -27,10 +27,10 @@ pub fn start() -> Result<(), JsValue> {
     let mut app = app.borrow_mut();
 
     let viewport = Viewport::new();
-    let context = viewport.borrow().context();
+    let gl = viewport.borrow().gl();
 
-    let program = Rc::new(create_shader_program(&context, include_str!("shaders/shader.vert"), include_str!("shaders/shader.frag")));
-    context.use_program(Some(&program));
+    let program = Rc::new(create_shader_program(&gl, include_str!("shaders/shader.vert"), include_str!("shaders/shader.frag")));
+    gl.use_program(Some(&program));
 
     let mut game_manager = GameObject::new();
     game_manager.add_component(Box::new(CameraPan::new(Rc::clone(&viewport), Rc::clone(&program))));

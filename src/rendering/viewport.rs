@@ -41,7 +41,7 @@ pub struct Viewport {
     height_updater: RefCell<Updater<i32>>,
 
     canvas: Rc<web_sys::HtmlCanvasElement>,
-    context: Rc<WebGl2RenderingContext>,
+    gl: Rc<WebGl2RenderingContext>,
 
     camera_pos: Vec3,
 
@@ -66,7 +66,7 @@ impl Viewport {
         body.append_child(&canvas).unwrap();
         let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
 
-        let context = canvas
+        let gl = canvas
             .get_context("webgl2").unwrap()
             .unwrap()
             .dyn_into::<WebGl2RenderingContext>().unwrap();
@@ -82,7 +82,7 @@ impl Viewport {
             width,
             height_updater: RefCell::new(Updater { value: height, update: Vec::new(), needs_update: true }),
             canvas: Rc::new(canvas),
-            context: Rc::new(context),
+            gl: Rc::new(gl),
             camera_pos,
             view_updater: RefCell::new(Updater {value: Mat4::IDENTITY, update: Vec::new(), needs_update: true}),
             projection_updater: RefCell::new(Updater {value: Mat4::IDENTITY, update: Vec::new(), needs_update: true}),
@@ -104,7 +104,7 @@ impl Viewport {
             viewport.borrow().canvas.set_attribute("width", &width.to_string()).unwrap();
             viewport.borrow().canvas.set_attribute("height", &height.to_string()).unwrap();
 
-            viewport.borrow().context.viewport(0, 0, width, height);
+            viewport.borrow().gl.viewport(0, 0, width, height);
 
             viewport.borrow_mut().recalculate_view();
             viewport.borrow_mut().recalculate_projection();
@@ -121,7 +121,7 @@ impl Viewport {
     pub fn height(&self) -> i32 { *self.height_updater.borrow().get_value() }
     pub fn aspect_ratio(&self) -> f32 { self.width as f32 / self.height() as f32 }
     pub fn canvas(&self) -> Rc<web_sys::HtmlCanvasElement> { Rc::clone(&self.canvas) }
-    pub fn context(&self) -> Rc<WebGl2RenderingContext> { Rc::clone(&self.context) }
+    pub fn gl(&self) -> Rc<WebGl2RenderingContext> { Rc::clone(&self.gl) }
     pub fn camera_pos(&self) -> &Vec3 { &self.camera_pos }
     pub fn orthographic_size(&self) -> f32 { *self.orthographic_size_updater.borrow().get_value() }
     pub fn view(&self) -> Mat4 { *self.view_updater.borrow().get_value() }

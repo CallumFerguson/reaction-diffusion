@@ -25,38 +25,38 @@ impl Component for CameraPan {
         let viewport = &self.viewport;
 
         let canvas = viewport.borrow().canvas();
-        let context = viewport.borrow().context();
+        let gl = viewport.borrow().gl();
 
-        let u_orthographic_size_loc = context.get_uniform_location(self.program.as_ref(), "u_orthographic_size");
-        context.uniform1f(u_orthographic_size_loc.as_ref(), viewport.borrow().orthographic_size());
+        let u_orthographic_size_loc = gl.get_uniform_location(self.program.as_ref(), "u_orthographic_size");
+        gl.uniform1f(u_orthographic_size_loc.as_ref(), viewport.borrow().orthographic_size());
         let program = Rc::clone(&self.program);
         viewport.borrow_mut().set_orthographic_size_change(Some(Box::new(move |viewport: &Viewport| {
-            viewport.context().use_program(Some(program.as_ref()));
-            viewport.context().uniform1f(u_orthographic_size_loc.as_ref(), viewport.orthographic_size());
+            viewport.gl().use_program(Some(program.as_ref()));
+            viewport.gl().uniform1f(u_orthographic_size_loc.as_ref(), viewport.orthographic_size());
         })));
 
-        let u_canvas_height_loc = context.get_uniform_location(self.program.as_ref(), "u_canvas_height");
-        context.uniform1i(u_canvas_height_loc.as_ref(), viewport.borrow().height());
+        let u_canvas_height_loc = gl.get_uniform_location(self.program.as_ref(), "u_canvas_height");
+        gl.uniform1i(u_canvas_height_loc.as_ref(), viewport.borrow().height());
         let program = Rc::clone(&self.program);
         viewport.borrow_mut().set_height_change(Some(Box::new(move |viewport: &Viewport| {
-            viewport.context().use_program(Some(program.as_ref()));
-            viewport.context().uniform1i(u_canvas_height_loc.as_ref(), viewport.height());
+            viewport.gl().use_program(Some(program.as_ref()));
+            viewport.gl().uniform1i(u_canvas_height_loc.as_ref(), viewport.height());
         })));
 
-        let u_view_loc = context.get_uniform_location(self.program.as_ref(), "u_view");
-        context.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, viewport.borrow().view().as_ref());
+        let u_view_loc = gl.get_uniform_location(self.program.as_ref(), "u_view");
+        gl.uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, viewport.borrow().view().as_ref());
         let program = Rc::clone(&self.program);
         viewport.borrow_mut().set_view_change(Some(Box::new(move |viewport: &Viewport| {
-            viewport.context().use_program(Some(program.as_ref()));
-            viewport.context().uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, viewport.view().as_ref());
+            viewport.gl().use_program(Some(program.as_ref()));
+            viewport.gl().uniform_matrix4fv_with_f32_array(u_view_loc.as_ref(), false, viewport.view().as_ref());
         })));
 
-        let u_projection_loc = context.get_uniform_location(self.program.as_ref(), "u_projection");
-        context.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, viewport.borrow().projection().as_ref());
+        let u_projection_loc = gl.get_uniform_location(self.program.as_ref(), "u_projection");
+        gl.uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, viewport.borrow().projection().as_ref());
         let program = Rc::clone(&self.program);
         viewport.borrow_mut().set_projection_change(Some(Box::new(move |viewport: &Viewport| {
-            viewport.context().use_program(Some(program.as_ref()));
-            viewport.context().uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, viewport.projection().as_ref());
+            viewport.gl().use_program(Some(program.as_ref()));
+            viewport.gl().uniform_matrix4fv_with_f32_array(u_projection_loc.as_ref(), false, viewport.projection().as_ref());
         })));
 
         let viewport = Rc::clone(&viewport);

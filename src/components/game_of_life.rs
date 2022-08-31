@@ -37,14 +37,14 @@ impl GameOfLife {
 impl Component for GameOfLife {
     fn on_add_to_game_object(&mut self) {
         let viewport = &self.viewport;
-        let context = viewport.borrow().context();
+        let gl = viewport.borrow().gl();
 
-        self.vao = Rc::new(Some(context
+        self.vao = Rc::new(Some(gl
             .create_vertex_array()
             .ok_or("Could not create vertex array object").unwrap()));
-        context.bind_vertex_array(self.vao.as_ref().as_ref());
+        gl.bind_vertex_array(self.vao.as_ref().as_ref());
 
-        context.use_program(Some(&self.program));
+        gl.use_program(Some(&self.program));
 
         let mut x = 0;
         let mut y = 0;
@@ -61,27 +61,27 @@ impl Component for GameOfLife {
             }
         }
 
-        let position_attribute_location = context.get_attrib_location(&self.program, "a_position");
-        self.buffer = Some(context.create_buffer().ok_or("Failed to create buffer").unwrap());
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, self.buffer.as_ref());
+        let position_attribute_location = gl.get_attrib_location(&self.program, "a_position");
+        self.buffer = Some(gl.create_buffer().ok_or("Failed to create buffer").unwrap());
+        gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, self.buffer.as_ref());
 
-        context.buffer_data_with_i32(
+        gl.buffer_data_with_i32(
             WebGl2RenderingContext::ARRAY_BUFFER,
             BUFFER_SIZE,
             WebGl2RenderingContext::STREAM_DRAW,
         );
 
-        context.vertex_attrib_pointer_with_i32(position_attribute_location as u32, 2, WebGl2RenderingContext::INT, false, 0, 0);
-        context.enable_vertex_attrib_array(position_attribute_location as u32);
+        gl.vertex_attrib_pointer_with_i32(position_attribute_location as u32, 2, WebGl2RenderingContext::INT, false, 0, 0);
+        gl.enable_vertex_attrib_array(position_attribute_location as u32);
     }
 
     fn on_update(&mut self) {
         let viewport = &self.viewport;
         let viewport = viewport.borrow();
-        let context = viewport.context();
+        let gl = viewport.gl();
 
-        context.bind_vertex_array(self.vao.as_ref().as_ref());
-        context.use_program(Some(&self.program));
+        gl.bind_vertex_array(self.vao.as_ref().as_ref());
+        gl.use_program(Some(&self.program));
 
         game_of_life_step(&self.alive_cells, &mut self.alive_cells_next);
         std::mem::swap(&mut self.alive_cells, &mut self.alive_cells_next);
@@ -96,12 +96,12 @@ impl Component for GameOfLife {
             self.vertices.push(cell.1);
         }
 
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, self.buffer.as_ref());
+        gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, self.buffer.as_ref());
 
         unsafe {
             let positions_array_buf_view = js_sys::Int32Array::view(&self.vertices);
 
-            context.buffer_sub_data_with_i32_and_array_buffer_view_and_src_offset_and_length(
+            gl.buffer_sub_data_with_i32_and_array_buffer_view_and_src_offset_and_length(
                 WebGl2RenderingContext::ARRAY_BUFFER,
                 0,
                 &positions_array_buf_view,
@@ -112,13 +112,13 @@ impl Component for GameOfLife {
     }
 
     fn on_render(&mut self) {
-        let context = self.viewport.borrow().context();
+        let gl = self.viewport.borrow().gl();
 
-        context.bind_vertex_array(self.vao.as_ref().as_ref());
-        context.use_program(Some(&self.program));
+        gl.bind_vertex_array(self.vao.as_ref().as_ref());
+        gl.use_program(Some(&self.program));
 
         let vert_count = (self.vertices.len() / 2) as i32;
-        context.draw_arrays(WebGl2RenderingContext::POINTS, 0, vert_count);
+        gl.draw_arrays(WebGl2RenderingContext::POINTS, 0, vert_count);
     }
 }
 

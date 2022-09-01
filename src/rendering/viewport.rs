@@ -127,6 +127,10 @@ impl Viewport {
     pub fn view(&self) -> Mat4 { *self.view_updater.borrow().get_value() }
     pub fn projection(&self) -> Mat4 { *self.projection_updater.borrow().get_value() }
 
+    pub  fn set_gl_viewport_to_current_width_height(&self) {
+        self.gl.viewport(0, 0, self.width(), self.height());
+    }
+
     pub fn set_height_change(&mut self, height_change: Option<Box<dyn Fn(&Self)>>) {
         self.height_updater.borrow_mut().set_update(height_change);
     }

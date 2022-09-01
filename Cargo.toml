@@ -33,5 +33,6 @@ features = [
     'console',
     'MouseEvent',
     'WheelEvent',
-    'WebGlTexture'
+    'WebGlTexture',
+    'WebGlFramebuffer'
 ]

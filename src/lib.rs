@@ -29,7 +29,7 @@ pub fn start() -> Result<(), JsValue> {
     let viewport = Viewport::new();
     let gl = viewport.borrow().gl();
 
-    let program = Rc::new(create_shader_program(&gl, include_str!("shaders/shader.vert"), include_str!("shaders/shader.frag")));
+    let program = Rc::new(create_shader_program(&gl, include_str!("shaders/unlit_RG16I_texture.vert"), include_str!("shaders/unlit_RG16I_texture.frag")));
     gl.use_program(Some(&program));
 
     let mut game_manager = GameObject::new();
@@ -54,8 +54,9 @@ pub fn start() -> Result<(), JsValue> {
     // square_object.add_component(Box::new(Square::new(Rc::clone(&viewport), Rc::clone(&program))));
     // app.add_game_object(square_object);
 
+    let reaction_diffusion_program = Rc::new(create_shader_program(&gl, include_str!("shaders/reaction_diffusion.vert"), include_str!("shaders/reaction_diffusion.frag")));
     let mut reaction_diffusion_object = GameObject::new();
-    reaction_diffusion_object.add_component(Box::new(ReactionDiffusion::new(Rc::clone(&viewport), Rc::clone(&program))));
+    reaction_diffusion_object.add_component(Box::new(ReactionDiffusion::new(Rc::clone(&viewport), Rc::clone(&program), Rc::clone(&reaction_diffusion_program))));
     app.add_game_object(reaction_diffusion_object);
 
     Ok(())

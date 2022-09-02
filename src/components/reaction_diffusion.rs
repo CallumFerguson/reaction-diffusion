@@ -121,7 +121,7 @@ impl Component for ReactionDiffusion {
         let viewport = self.viewport.borrow();
         let gl = viewport.gl();
 
-        let iterations = 25;
+        let iterations = 15;
         gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
         gl.bind_vertex_array(self.render_texture_vao.as_ref());
         self.fbo = Some(Box::new(gl.create_framebuffer().unwrap()));

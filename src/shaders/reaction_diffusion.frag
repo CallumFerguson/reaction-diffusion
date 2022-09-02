@@ -84,5 +84,8 @@ void main() {
     float a_prime = a + (D_A * nabla_squared_a - a * b * b + F * (1.0 - a)) * DELTA_T;
     float b_prime = b + (D_B * nabla_squared_b + a * b * b - (K + F) * b) * DELTA_T;
 
-    outColor = uvec2(int(round(clamp(a_prime, 0.0, 1.0) * 65535.0)), int(round(clamp(b_prime, 0.0, 1.0) * 65535.0)));
+    int a_prime_int = int(round(clamp(a_prime, 0.0, 1.0) * 65535.0));
+    int b_prime_int = int(round(clamp(b_prime, 0.0, 1.0) * 65535.0));
+
+    outColor = uvec2(a_prime_int, b_prime_int);
 }

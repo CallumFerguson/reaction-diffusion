@@ -27,6 +27,7 @@ impl Component for CameraPan {
         let canvas = viewport.borrow().canvas();
         let gl = viewport.borrow().gl();
 
+        gl.use_program(Some(self.program.as_ref()));
         let u_orthographic_size_loc = gl.get_uniform_location(self.program.as_ref(), "u_orthographic_size");
         gl.uniform1f(u_orthographic_size_loc.as_ref(), viewport.borrow().orthographic_size());
         let program = Rc::clone(&self.program);

@@ -81,6 +81,7 @@ void main() {
     nabla_squared_a += a8 * u_kernel[8];
     nabla_squared_b += b8 * u_kernel[8];
 
+    // math from https://karlsims.com/rd.html
     float a_prime = a + (D_A * nabla_squared_a - a * b * b + F * (1.0 - a)) * DELTA_T;
     float b_prime = b + (D_B * nabla_squared_b + a * b * b - (K + F) * b) * DELTA_T;
 

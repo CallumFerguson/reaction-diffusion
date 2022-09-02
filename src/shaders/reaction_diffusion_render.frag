@@ -7,6 +7,7 @@ in vec2 v_uv;
 
 out vec4 outColor;
 
+// from https://github.com/pmneila/jsexp/blob/master/grayscott/index.html
 void main() {
     highp uvec2 utexel = texture(u_texture, v_uv).rg;
     float value = float(utexel.g) / 65535.0;

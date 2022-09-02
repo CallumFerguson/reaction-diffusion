@@ -136,6 +136,7 @@ impl Component for ReactionDiffusion {
         let viewport = self.viewport.borrow();
         let gl = viewport.gl();
 
+        // do the reaction diffusion with a shader for the computation
         let iterations = 15;
         gl.bind_vertex_array(self.render_texture_vao.as_ref());
         gl.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, Some(self.fbo.as_ref().unwrap().as_ref()));

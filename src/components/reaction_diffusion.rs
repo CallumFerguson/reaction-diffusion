@@ -66,6 +66,21 @@ impl Component for ReactionDiffusion {
         let u_model_loc = gl.get_uniform_location(self.program.as_ref(), "u_model");
         gl.uniform_matrix4fv_with_f32_array(u_model_loc.as_ref(), false, model.as_ref());
 
+        gl.use_program(Some(&self.reaction_diffusion_program));
+        let u_kernel_loc = gl.get_uniform_location(self.reaction_diffusion_program.as_ref(), "u_kernel");
+        let kernel: [f32; 9] = [
+            0.05, 0.2, 0.05,
+            0.2, -1.0, 0.2,
+            0.05, 0.2, 0.05
+        ];
+        gl.uniform1fv_with_f32_array(u_kernel_loc.as_ref(), &kernel);
+
+        let u_texture_width_loc = gl.get_uniform_location(self.reaction_diffusion_program.as_ref(), "u_texture_width");
+        gl.uniform1i(u_texture_width_loc.as_ref(), CELLS_WIDTH);
+
+        let u_texture_height_loc = gl.get_uniform_location(self.reaction_diffusion_program.as_ref(), "u_texture_height");
+        gl.uniform1i(u_texture_height_loc.as_ref(), CELLS_HEIGHT);
+
         self.input_texture = Some(Box::new(create_and_bind_texture(&gl).unwrap()));
         unsafe {
             let view = js_sys::Uint16Array::view(&self.cells);
@@ -83,6 +98,8 @@ impl Component for ReactionDiffusion {
                 0,
             ).unwrap();
         }
+        // gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_S, WebGl2RenderingContext::REPEAT as i32);
+        // gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_T, WebGl2RenderingContext::REPEAT as i32);
 
         self.output_texture = Some(Box::new(create_and_bind_texture(&gl).unwrap()));
         gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
@@ -94,15 +111,17 @@ impl Component for ReactionDiffusion {
             0,
             WebGl2RenderingContext::RG_INTEGER,
             WebGl2RenderingContext::UNSIGNED_SHORT,
-            None
+            None,
         ).unwrap();
+        // gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_S, WebGl2RenderingContext::REPEAT as i32);
+        // gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_T, WebGl2RenderingContext::REPEAT as i32);
     }
 
     fn on_update(&mut self) {
         let viewport = self.viewport.borrow();
         let gl = viewport.gl();
 
-        let iterations = 1;
+        let iterations = 10;
         gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
         gl.bind_vertex_array(self.render_texture_vao.as_ref());
         self.fbo = Some(Box::new(gl.create_framebuffer().unwrap()));
@@ -116,9 +135,10 @@ impl Component for ReactionDiffusion {
             gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
 
             std::mem::swap(&mut self.input_texture, &mut self.output_texture);
+
+            gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
         }
 
-        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
         gl.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, None);
         viewport.set_gl_viewport_to_current_width_height();
 

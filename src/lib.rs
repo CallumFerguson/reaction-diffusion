@@ -29,10 +29,10 @@ pub fn start() -> Result<(), JsValue> {
     let viewport = Viewport::new();
     let gl = viewport.borrow().gl();
 
-    let unlit_texture_bicubic = Rc::new(create_shader_program(&gl, include_str!("shaders/unlit_texture_bicubic.vert"), include_str!("shaders/unlit_texture_bicubic.frag")));
+    let unlit_texture_bicubic = Rc::new(create_shader_program(&gl, include_str!("shaders/basic_bicubic.vert"), include_str!("shaders/basic_bicubic.frag")));
 
     let mut game_manager = GameObject::new();
-    game_manager.add_component(Box::new(CameraPan::new(Rc::clone(&viewport), Rc::clone(&unlit_texture_bicubic))));
+    // game_manager.add_component(Box::new(CameraPan::new(Rc::clone(&viewport), Rc::clone(&unlit_texture_bicubic))));
     game_manager.add_component(Box::new(ClearCanvas::new(Rc::clone(&viewport))));
     app.add_game_object(game_manager);
 

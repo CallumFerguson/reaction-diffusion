@@ -15,13 +15,15 @@ use crate::utils::{compile_shader, link_program};
 // const K: f32 = 0.062;
 // const DELTA_T: f32 = 1.0;
 
+const SIMULATION_SCALE: f32 = 1.5;
+
 pub struct ReactionDiffusion {
     vao: Option<WebGlVertexArrayObject>,
     render_texture_vao: Option<WebGlVertexArrayObject>,
     unlit_texture_bicubic: Rc<WebGlProgram>,
     reaction_diffusion: Rc<WebGlProgram>,
     reaction_diffusion_render: Rc<WebGlProgram>,
-    basic_RG16UI: WebGlProgram,
+    basic_rg16ui: WebGlProgram,
     viewport: Rc<RefCell<Viewport>>,
     indices_count: i32,
     fbo: Option<Box<WebGlFramebuffer>>,
@@ -39,8 +41,8 @@ impl ReactionDiffusion {
         let mut height = 512;
         {
             let vp = viewport.borrow();
-            width = vp.width();
-            height = vp.height();
+            width = (vp.width() as f32 / SIMULATION_SCALE).round() as i32;
+            height = (vp.height() as f32 / SIMULATION_SCALE).round() as i32;
         }
         return Self {
             vao: None,
@@ -48,7 +50,7 @@ impl ReactionDiffusion {
             unlit_texture_bicubic,
             reaction_diffusion,
             reaction_diffusion_render,
-            basic_RG16UI: create_shader_program(&gl, include_str!("../shaders/basic_RG16UI.vert"), include_str!("../shaders/basic_RG16UI.frag")),
+            basic_rg16ui: create_shader_program(&gl, include_str!("../shaders/basic_RG16UI.vert"), include_str!("../shaders/basic_RG16UI.frag")),
             viewport,
             indices_count: 0,
             fbo: None,
@@ -73,10 +75,10 @@ impl Component for ReactionDiffusion {
         let vertices = [-1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, -1.0, 0.0, -1.0, -1.0, 0.0];
         self.render_texture_vao = Some(init_quad(&gl, &self.unlit_texture_bicubic, &vertices));
 
-        gl.use_program(Some(&self.unlit_texture_bicubic));
-        let model = Mat4::from_scale_rotation_translation(Vec3::new(self.width as f32, self.height as f32, 1.0), Quat::IDENTITY, Vec3::new(0.0, 0.0, 0.0));
-        let u_model_loc = gl.get_uniform_location(self.unlit_texture_bicubic.as_ref(), "u_model");
-        gl.uniform_matrix4fv_with_f32_array(u_model_loc.as_ref(), false, model.as_ref());
+        // gl.use_program(Some(&self.unlit_texture_bicubic));
+        // let model = Mat4::from_scale_rotation_translation(Vec3::new(self.width as f32, self.height as f32, 1.0), Quat::IDENTITY, Vec3::new(0.0, 0.0, 0.0));
+        // let u_model_loc = gl.get_uniform_location(self.unlit_texture_bicubic.as_ref(), "u_model");
+        // gl.uniform_matrix4fv_with_f32_array(u_model_loc.as_ref(), false, model.as_ref());
 
         gl.use_program(Some(&self.reaction_diffusion));
         let u_kernel_loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "u_kernel");
@@ -140,8 +142,8 @@ impl Component for ReactionDiffusion {
         let viewport = self.viewport.borrow();
         let gl = viewport.gl();
 
-        self.width = viewport.width();
-        self.height = viewport.height();
+        self.width = (width as f32 / SIMULATION_SCALE).round() as i32;
+        self.height = (height as f32 / SIMULATION_SCALE).round() as i32;
 
         gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.output_texture.as_ref().unwrap().as_ref()));
         gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
@@ -159,7 +161,7 @@ impl Component for ReactionDiffusion {
         gl.bind_vertex_array(self.render_texture_vao.as_ref());
         gl.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, Some(self.fbo.as_ref().unwrap().as_ref()));
         gl.viewport(0, 0, self.width, self.height);
-        gl.use_program(Some(&self.basic_RG16UI));
+        gl.use_program(Some(&self.basic_rg16ui));
 
         gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
 
@@ -217,14 +219,14 @@ impl Component for ReactionDiffusion {
         }
 
         // rerender special texture into a regular RGBA UNSIGNED_BYTE texture
-        // gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
-        //
-        // gl.framebuffer_texture_2d(WebGl2RenderingContext::FRAMEBUFFER, WebGl2RenderingContext::COLOR_ATTACHMENT0, WebGl2RenderingContext::TEXTURE_2D, Some(self.render_texture.as_ref().unwrap().as_ref()), 0);
-        //
-        // gl.use_program(Some(&self.reaction_diffusion_render));
-        // gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
-        //
-        // gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.render_texture.as_ref().unwrap().as_ref()));
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
+
+        gl.framebuffer_texture_2d(WebGl2RenderingContext::FRAMEBUFFER, WebGl2RenderingContext::COLOR_ATTACHMENT0, WebGl2RenderingContext::TEXTURE_2D, Some(self.render_texture.as_ref().unwrap().as_ref()), 0);
+
+        gl.use_program(Some(&self.reaction_diffusion_render));
+        gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
+
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.render_texture.as_ref().unwrap().as_ref()));
 
         // reset back to rendering to canvas
         gl.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, None);
@@ -291,8 +293,8 @@ impl Component for ReactionDiffusion {
 
         // gl.bind_vertex_array(self.vao.as_ref());
         gl.bind_vertex_array(self.render_texture_vao.as_ref());
-        // gl.use_program(Some(&self.unlit_texture_bicubic));
-        gl.use_program(Some(&self.reaction_diffusion_render));
+        gl.use_program(Some(&self.unlit_texture_bicubic));
+        // gl.use_program(Some(&self.reaction_diffusion_render));
 
         gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
     }

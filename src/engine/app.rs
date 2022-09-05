@@ -62,18 +62,18 @@ impl App {
             last_unscaled_time = unscaled_time;
             // console_log!("{}", 1.0 / delta_time);
 
-            for game_object in &mut app.game_objects {
-                for component in game_object.components_iter() {
-                    component.on_update();
-                }
-            }
-
             if *resized.borrow() {
                 *resized.borrow_mut() = false;
                 for game_object in &mut app.game_objects {
                     for component in game_object.components_iter() {
                         component.on_resize(*screen_width.borrow(), *screen_height.borrow());
                     }
+                }
+            }
+
+            for game_object in &mut app.game_objects {
+                for component in game_object.components_iter() {
+                    component.on_update();
                 }
             }
 

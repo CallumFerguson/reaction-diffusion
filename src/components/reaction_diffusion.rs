@@ -63,10 +63,6 @@ impl Component for ReactionDiffusion {
         let viewport = self.viewport.borrow();
         let gl = viewport.gl();
 
-        // let mut cells = Vec::<u16>::with_capacity((self.width * self.height * 2) as usize);
-        let mut cells: Vec<u16> = vec![0; (self.width * self.height * 2) as usize];
-        init_cells(&mut cells, self.width, self.height);
-
         let vertices = [-0.5, 0.5, 0.0, 0.5, 0.5, 0.0, 0.5, -0.5, 0.0, -0.5, -0.5, 0.0];
         self.vao = Some(init_quad(&gl, &self.unlit_texture_bicubic, &vertices));
         self.indices_count = 6;
@@ -95,6 +91,8 @@ impl Component for ReactionDiffusion {
         gl.uniform1i(u_texture_height_loc.as_ref(), self.height);
 
         self.input_texture = Some(Box::new(create_and_bind_texture(&gl, WebGl2RenderingContext::NEAREST, WebGl2RenderingContext::REPEAT).unwrap()));
+        let mut cells: Vec<u16> = vec![0; (self.width * self.height * 2) as usize];
+        init_cells(&mut cells, self.width, self.height);
         unsafe {
             let view = js_sys::Uint16Array::view(&cells);
 
@@ -139,6 +137,60 @@ impl Component for ReactionDiffusion {
         ).unwrap();
 
         self.fbo = Some(Box::new(gl.create_framebuffer().unwrap()));
+    }
+
+    fn on_resize(&mut self, width: i32, height: i32) {
+        let viewport = self.viewport.borrow();
+        let gl = viewport.gl();
+
+        self.width = viewport.width();
+        self.height = viewport.height();
+
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
+        let mut cells: Vec<u16> = vec![0; (self.width * self.height * 2) as usize];
+        init_cells(&mut cells, self.width, self.height);
+        unsafe {
+            let view = js_sys::Uint16Array::view(&cells);
+
+            gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_array_buffer_view_and_src_offset(
+                WebGl2RenderingContext::TEXTURE_2D,
+                0,
+                WebGl2RenderingContext::RG16UI as i32,
+                self.width,
+                self.height,
+                0,
+                WebGl2RenderingContext::RG_INTEGER,
+                WebGl2RenderingContext::UNSIGNED_SHORT,
+                &view,
+                0,
+            ).unwrap();
+        }
+
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.output_texture.as_ref().unwrap().as_ref()));
+        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
+            WebGl2RenderingContext::TEXTURE_2D,
+            0,
+            WebGl2RenderingContext::RG16UI as i32,
+            self.width,
+            self.height,
+            0,
+            WebGl2RenderingContext::RG_INTEGER,
+            WebGl2RenderingContext::UNSIGNED_SHORT,
+            None,
+        ).unwrap();
+
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.render_texture.as_ref().unwrap().as_ref()));
+        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
+            WebGl2RenderingContext::TEXTURE_2D,
+            0,
+            WebGl2RenderingContext::RGBA as i32,
+            self.width,
+            self.height,
+            0,
+            WebGl2RenderingContext::RGBA,
+            WebGl2RenderingContext::UNSIGNED_BYTE,
+            None,
+        ).unwrap();
     }
 
     fn on_update(&mut self) {
@@ -230,8 +282,6 @@ impl Component for ReactionDiffusion {
         //     ).unwrap();
         // }
     }
-
-    fn on_resize(&mut self, width: i32, height: i32) {}
 
     fn on_render(&mut self) {
         let gl = self.viewport.borrow().gl();

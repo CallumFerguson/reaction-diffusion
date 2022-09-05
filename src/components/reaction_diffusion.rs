@@ -231,6 +231,8 @@ impl Component for ReactionDiffusion {
         // }
     }
 
+    fn on_resize(&mut self, width: i32, height: i32) {}
+
     fn on_render(&mut self) {
         let gl = self.viewport.borrow().gl();
 

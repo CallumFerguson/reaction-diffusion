@@ -17,6 +17,29 @@ impl App {
 
         let window = Rc::new(web_sys::window().expect("no global `window` exists"));
 
+        let resized = Rc::new(RefCell::new(false));
+        let screen_width = Rc::new(RefCell::new(0));
+        let screen_height = Rc::new(RefCell::new(0));
+
+        let window_outer = Rc::clone(&window);
+        let resized_outer = Rc::clone(&resized);
+        let screen_width_outer = Rc::clone(&screen_width);
+        let screen_height_outer = Rc::clone(&screen_height);
+        let event_closure = Closure::<dyn FnMut()>::new(move || {
+            let width = window.inner_width().unwrap().as_f64().unwrap() as i32;
+            let height = window.inner_height().unwrap().as_f64().unwrap() as i32;
+
+            *resized.borrow_mut() = true;
+            *screen_width.borrow_mut() = width;
+            *screen_height.borrow_mut() = height;
+        });
+        let window = window_outer;
+        let resized = resized_outer;
+        let screen_width = screen_width_outer;
+        let screen_height = screen_height_outer;
+        window.add_event_listener_with_callback("resize", event_closure.as_ref().unchecked_ref()).unwrap();
+        event_closure.forget();
+
         let animation_loop_closure = Rc::new(RefCell::new(None::<Closure<dyn FnMut(_)>>));
         let animation_loop_closure_outer = animation_loop_closure.clone();
 
@@ -42,6 +65,15 @@ impl App {
             for game_object in &mut app.game_objects {
                 for component in game_object.components_iter() {
                     component.on_update();
+                }
+            }
+
+            if *resized.borrow() {
+                *resized.borrow_mut() = false;
+                for game_object in &mut app.game_objects {
+                    for component in game_object.components_iter() {
+                        component.on_resize(*screen_width.borrow(), *screen_height.borrow());
+                    }
                 }
             }
 

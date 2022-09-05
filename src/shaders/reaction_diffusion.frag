@@ -10,8 +10,6 @@ const float DELTA_T = 1.0;
 
 uniform highp usampler2D u_texture;
 uniform float u_kernel[9];
-uniform int u_texture_width;
-uniform int u_texture_height;
 
 in vec2 v_uv;
 

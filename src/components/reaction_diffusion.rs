@@ -3,7 +3,8 @@ use std::rc::Rc;
 use glam::{Mat4, Quat, Vec3};
 use rand::Rng;
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlFramebuffer, WebGlProgram, WebGlTexture, WebGlVertexArrayObject};
-use crate::{Component, Viewport};
+use crate::{Component, create_shader_program, Viewport};
+use crate::utils::{compile_shader, link_program};
 
 // const CELLS_WIDTH: i32 = 512;
 // const CELLS_HEIGHT: i32 = 512;
@@ -20,6 +21,7 @@ pub struct ReactionDiffusion {
     unlit_texture_bicubic: Rc<WebGlProgram>,
     reaction_diffusion: Rc<WebGlProgram>,
     reaction_diffusion_render: Rc<WebGlProgram>,
+    basic_RG16UI: WebGlProgram,
     viewport: Rc<RefCell<Viewport>>,
     indices_count: i32,
     fbo: Option<Box<WebGlFramebuffer>>,
@@ -46,6 +48,7 @@ impl ReactionDiffusion {
             unlit_texture_bicubic,
             reaction_diffusion,
             reaction_diffusion_render,
+            basic_RG16UI: create_shader_program(&gl, include_str!("../shaders/basic_RG16UI.vert"), include_str!("../shaders/basic_RG16UI.frag")),
             viewport,
             indices_count: 0,
             fbo: None,
@@ -83,12 +86,6 @@ impl Component for ReactionDiffusion {
             0.05, 0.2, 0.05
         ];
         gl.uniform1fv_with_f32_array(u_kernel_loc.as_ref(), &kernel);
-
-        let u_texture_width_loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "u_texture_width");
-        gl.uniform1i(u_texture_width_loc.as_ref(), self.width);
-
-        let u_texture_height_loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "u_texture_height");
-        gl.uniform1i(u_texture_height_loc.as_ref(), self.height);
 
         self.input_texture = Some(Box::new(create_and_bind_texture(&gl, WebGl2RenderingContext::NEAREST, WebGl2RenderingContext::REPEAT).unwrap()));
         let mut cells: Vec<u16> = vec![0; (self.width * self.height * 2) as usize];
@@ -146,26 +143,6 @@ impl Component for ReactionDiffusion {
         self.width = viewport.width();
         self.height = viewport.height();
 
-        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
-        let mut cells: Vec<u16> = vec![0; (self.width * self.height * 2) as usize];
-        init_cells(&mut cells, self.width, self.height);
-        unsafe {
-            let view = js_sys::Uint16Array::view(&cells);
-
-            gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_array_buffer_view_and_src_offset(
-                WebGl2RenderingContext::TEXTURE_2D,
-                0,
-                WebGl2RenderingContext::RG16UI as i32,
-                self.width,
-                self.height,
-                0,
-                WebGl2RenderingContext::RG_INTEGER,
-                WebGl2RenderingContext::UNSIGNED_SHORT,
-                &view,
-                0,
-            ).unwrap();
-        }
-
         gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.output_texture.as_ref().unwrap().as_ref()));
         gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
             WebGl2RenderingContext::TEXTURE_2D,
@@ -178,6 +155,32 @@ impl Component for ReactionDiffusion {
             WebGl2RenderingContext::UNSIGNED_SHORT,
             None,
         ).unwrap();
+
+        gl.bind_vertex_array(self.render_texture_vao.as_ref());
+        gl.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, Some(self.fbo.as_ref().unwrap().as_ref()));
+        gl.viewport(0, 0, self.width, self.height);
+        gl.use_program(Some(&self.basic_RG16UI));
+
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
+
+        gl.framebuffer_texture_2d(WebGl2RenderingContext::FRAMEBUFFER, WebGl2RenderingContext::COLOR_ATTACHMENT0, WebGl2RenderingContext::TEXTURE_2D, Some(self.output_texture.as_ref().unwrap().as_ref()), 0);
+
+        gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
+
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
+        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
+            WebGl2RenderingContext::TEXTURE_2D,
+            0,
+            WebGl2RenderingContext::RG16UI as i32,
+            self.width,
+            self.height,
+            0,
+            WebGl2RenderingContext::RG_INTEGER,
+            WebGl2RenderingContext::UNSIGNED_SHORT,
+            None,
+        ).unwrap();
+
+        std::mem::swap(&mut self.input_texture, &mut self.output_texture);
 
         gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.render_texture.as_ref().unwrap().as_ref()));
         gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(

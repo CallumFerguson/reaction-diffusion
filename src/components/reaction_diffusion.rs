@@ -5,6 +5,7 @@ use rand::Rng;
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlFramebuffer, WebGlProgram, WebGlTexture, WebGlVertexArrayObject};
 use crate::{ClearCanvas, Component, create_shader_program, GameObject, Viewport};
 use crate::engine::app::App;
+use crate::engine::app::input::Button::Left;
 use crate::utils::{compile_shader, link_program};
 
 // const CELLS_WIDTH: i32 = 512;
@@ -19,12 +20,13 @@ use crate::utils::{compile_shader, link_program};
 const SIMULATION_SCALE: f32 = 1.0;
 
 pub struct ReactionDiffusion {
-    vao: Option<WebGlVertexArrayObject>,
+    quad_vao: Option<WebGlVertexArrayObject>,
     render_texture_vao: Option<WebGlVertexArrayObject>,
     unlit_texture_bicubic: Rc<WebGlProgram>,
     reaction_diffusion: Rc<WebGlProgram>,
     reaction_diffusion_render: Rc<WebGlProgram>,
     basic_rg16ui: WebGlProgram,
+    unlit_color_on_rg16ui: WebGlProgram,
     viewport: Rc<RefCell<Viewport>>,
     indices_count: i32,
     fbo: Option<Box<WebGlFramebuffer>>,
@@ -46,12 +48,13 @@ impl ReactionDiffusion {
             height = (vp.height() as f32 / SIMULATION_SCALE).round() as i32;
         }
         return Self {
-            vao: None,
+            quad_vao: None,
             render_texture_vao: None,
             unlit_texture_bicubic,
             reaction_diffusion,
             reaction_diffusion_render,
             basic_rg16ui: create_shader_program(&gl, include_str!("../shaders/basic_RG16UI.vert"), include_str!("../shaders/basic_RG16UI.frag")),
+            unlit_color_on_rg16ui: create_shader_program(&gl, include_str!("../shaders/unlit_color_on_RG16UI.vert"), include_str!("../shaders/unlit_color_on_RG16UI.frag")),
             viewport,
             indices_count: 0,
             fbo: None,
@@ -70,11 +73,12 @@ impl Component for ReactionDiffusion {
         let gl = viewport.gl();
 
         let vertices = [-0.5, 0.5, 0.0, 0.5, 0.5, 0.0, 0.5, -0.5, 0.0, -0.5, -0.5, 0.0];
-        self.vao = Some(init_quad(&gl, &self.unlit_texture_bicubic, &vertices));
-        self.indices_count = 6;
+        self.quad_vao = Some(init_quad(&gl, &self.unlit_color_on_rg16ui, &vertices));
 
         let vertices = [-1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, -1.0, 0.0, -1.0, -1.0, 0.0];
         self.render_texture_vao = Some(init_quad(&gl, &self.unlit_texture_bicubic, &vertices));
+
+        self.indices_count = 6;
 
         // gl.use_program(Some(&self.unlit_texture_bicubic));
         // let model = Mat4::from_scale_rotation_translation(Vec3::new(self.width as f32, self.height as f32, 1.0), Quat::IDENTITY, Vec3::new(0.0, 0.0, 0.0));
@@ -202,6 +206,30 @@ impl Component for ReactionDiffusion {
     fn on_update(&mut self, app: &App) {
         let viewport = self.viewport.borrow();
         let gl = viewport.gl();
+
+        if app.input().get_button(Left) {
+            gl.bind_vertex_array(self.quad_vao.as_ref());
+            gl.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, Some(self.fbo.as_ref().unwrap().as_ref()));
+            gl.viewport(0, 0, self.width, self.height);
+            gl.use_program(Some(&self.unlit_color_on_rg16ui));
+
+            let mouse_position = app.input().mouse_position();
+            let mat = Mat4::from_scale_rotation_translation(Vec3::new(10.0, 10.0, 1.0), Quat::IDENTITY, Vec3::new(mouse_position.0 as f32, mouse_position.1 as f32, 0.0));
+            let loc = gl.get_uniform_location(&self.unlit_color_on_rg16ui, "u_model");
+            gl.uniform_matrix4fv_with_f32_array(loc.as_ref(), false, mat.as_ref());
+
+            let mat = Mat4::IDENTITY;
+            let loc = gl.get_uniform_location(&self.unlit_color_on_rg16ui, "u_view");
+            gl.uniform_matrix4fv_with_f32_array(loc.as_ref(), false, mat.as_ref());
+
+            let mat = Mat4::orthographic_rh_gl(0.0, viewport.width() as f32, viewport.height() as f32, 0.0, -1.0, 1.0);
+            let loc = gl.get_uniform_location(&self.unlit_color_on_rg16ui, "u_projection");
+            gl.uniform_matrix4fv_with_f32_array(loc.as_ref(), false, mat.as_ref());
+
+            gl.framebuffer_texture_2d(WebGl2RenderingContext::FRAMEBUFFER, WebGl2RenderingContext::COLOR_ATTACHMENT0, WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()), 0);
+
+            gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
+        }
 
         // do the reaction diffusion with a shader for the computation
         let iterations = 15;

@@ -3,12 +3,15 @@ use std::rc::Rc;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::Closure;
 use crate::{GameObject};
+use crate::engine::app::input::Input;
 use crate::engine::game_object;
+
+pub mod input;
 
 pub struct App {
     game_objects: RefCell<Vec<GameObject>>,
     game_objects_to_be_added: RefCell<Vec<GameObject>>,
-    pointer_down: bool,
+    input: Input,
 }
 
 impl App {
@@ -16,7 +19,7 @@ impl App {
         let app = App {
             game_objects: RefCell::new(Vec::new()),
             game_objects_to_be_added: RefCell::new(Vec::new()),
-            pointer_down: false,
+            input: Input::new(),
         };
         let app = Rc::new(RefCell::new(app));
 
@@ -46,11 +49,21 @@ impl App {
         event_closure.forget();
 
         let app_outer = Rc::clone(&app);
-        let event_closure = Closure::<dyn FnMut()>::new(move || {
-            app.borrow_mut().pointer_down = true;
+        let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
+            app.borrow_mut().input.set_buttons(event.buttons());
         });
         let app = app_outer;
-        window.add_event_listener_with_callback("pointerdown", event_closure.as_ref().unchecked_ref()).unwrap();
+        window.add_event_listener_with_callback("mousedown", event_closure.as_ref().unchecked_ref()).unwrap();
+        window.add_event_listener_with_callback("mouseup", event_closure.as_ref().unchecked_ref()).unwrap();
+        event_closure.forget();
+
+        let app_outer = Rc::clone(&app);
+        let event_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
+            app.borrow_mut().input.set_buttons(event.buttons());
+            app.borrow_mut().input.set_mouse_position((event.offset_x(), event.offset_y()));
+        });
+        let app = app_outer;
+        window.add_event_listener_with_callback("mousemove", event_closure.as_ref().unchecked_ref()).unwrap();
         event_closure.forget();
 
         let animation_loop_closure = Rc::new(RefCell::new(None::<Closure<dyn FnMut(_)>>));
@@ -114,7 +127,6 @@ impl App {
 
             {
                 let mut app = app.borrow_mut();
-                app.pointer_down = false;
             }
 
             window.request_animation_frame(animation_loop_closure.borrow().as_ref().unwrap().as_ref().unchecked_ref()).expect("request_animation_frame failed");
@@ -132,7 +144,7 @@ impl App {
         self.game_objects_to_be_added.borrow_mut().push(game_object);
     }
 
-    pub fn pointer_down(&self) -> bool {
-        return self.pointer_down;
+    pub fn input(&self) -> &Input {
+        return &self.input;
     }
 }

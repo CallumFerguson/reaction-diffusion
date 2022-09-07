@@ -6,7 +6,7 @@ use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlFramebuffer, WebGlProgra
 use crate::{ClearCanvas, Component, create_shader_program, GameObject, Viewport};
 use crate::engine::app::App;
 use crate::engine::app::input::Button::Left;
-use crate::utils::{compile_shader, link_program};
+use crate::utils::{compile_shader, distance, lerp, link_program};
 
 // const CELLS_WIDTH: i32 = 512;
 // const CELLS_HEIGHT: i32 = 512;
@@ -35,6 +35,7 @@ pub struct ReactionDiffusion {
     render_texture: Option<Box<WebGlTexture>>,
     width: i32,
     height: i32,
+    last_mouse_position: (i32, i32),
 }
 
 impl ReactionDiffusion {
@@ -63,6 +64,7 @@ impl ReactionDiffusion {
             render_texture: None,
             width,
             height,
+            last_mouse_position: (-1, -1),
         };
     }
 }
@@ -214,9 +216,6 @@ impl Component for ReactionDiffusion {
             gl.use_program(Some(&self.unlit_color_on_rg16ui));
 
             let mouse_position = app.input().mouse_position();
-            let mat = Mat4::from_scale_rotation_translation(Vec3::new(10.0, 10.0, 1.0), Quat::IDENTITY, Vec3::new(mouse_position.0 as f32, mouse_position.1 as f32, 0.0));
-            let loc = gl.get_uniform_location(&self.unlit_color_on_rg16ui, "u_model");
-            gl.uniform_matrix4fv_with_f32_array(loc.as_ref(), false, mat.as_ref());
 
             let mat = Mat4::IDENTITY;
             let loc = gl.get_uniform_location(&self.unlit_color_on_rg16ui, "u_view");
@@ -228,7 +227,28 @@ impl Component for ReactionDiffusion {
 
             gl.framebuffer_texture_2d(WebGl2RenderingContext::FRAMEBUFFER, WebGl2RenderingContext::COLOR_ATTACHMENT0, WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()), 0);
 
-            gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
+            if self.last_mouse_position == (-1, -1) {
+                self.last_mouse_position = mouse_position;
+            }
+
+            let distance = distance(self.last_mouse_position, mouse_position);
+            let num_circles = distance.round().clamp(1.0, f32::MAX) as i32;
+
+            for i in 0..=num_circles {
+                let t = i as f32 / num_circles as f32;
+                let x = lerp(self.last_mouse_position.0 as f32, mouse_position.0 as f32, t);
+                let y = lerp(self.last_mouse_position.1 as f32, mouse_position.1 as f32, t);
+
+                let mat = Mat4::from_scale_rotation_translation(Vec3::new(10.0, 10.0, 1.0), Quat::IDENTITY, Vec3::new(x, y, 0.0));
+                let loc = gl.get_uniform_location(&self.unlit_color_on_rg16ui, "u_model");
+                gl.uniform_matrix4fv_with_f32_array(loc.as_ref(), false, mat.as_ref());
+
+                gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
+            }
+
+            self.last_mouse_position = mouse_position;
+        } else {
+            self.last_mouse_position = (-1, -1);
         }
 
         // do the reaction diffusion with a shader for the computation

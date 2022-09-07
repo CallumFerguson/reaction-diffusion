@@ -68,3 +68,13 @@ pub fn link_program(
             .unwrap_or_else(|| String::from("Unknown error creating program object")))
     }
 }
+
+pub fn lerp(a: f32, b: f32, t: f32) -> f32 {
+    return a + (b - a) * t;
+}
+
+pub fn distance(a: (i32, i32), b: (i32, i32)) -> f32 {
+    let x_diff = b.0 - a.0;
+    let y_diff = b.1 - a.1;
+    return ((x_diff * x_diff + y_diff * y_diff) as f32).sqrt();
+}

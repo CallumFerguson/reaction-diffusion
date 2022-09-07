@@ -127,6 +127,12 @@ impl App {
 
             {
                 let mut app = app.borrow_mut();
+
+                let mouse_position = app.input.mouse_position();
+                app.input.set_last_mouse_position(mouse_position);
+
+                let buttons = app.input.buttons();
+                app.input.set_last_buttons(buttons);
             }
 
             window.request_animation_frame(animation_loop_closure.borrow().as_ref().unwrap().as_ref().unchecked_ref()).expect("request_animation_frame failed");

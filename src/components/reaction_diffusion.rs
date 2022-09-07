@@ -209,7 +209,7 @@ impl Component for ReactionDiffusion {
         let viewport = self.viewport.borrow();
         let gl = viewport.gl();
 
-        if app.input().get_button(Left) {
+        if app.input().get_button_down(Left) || app.input().get_button(Left) && app.input().mouse_delta_position() != (0, 0) {
             gl.bind_vertex_array(self.quad_vao.as_ref());
             gl.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, Some(self.fbo.as_ref().unwrap().as_ref()));
             gl.viewport(0, 0, self.width, self.height);

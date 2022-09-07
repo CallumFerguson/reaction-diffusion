@@ -24,7 +24,7 @@ pub fn start() -> Result<(), JsValue> {
     console_log!("starting webgl");
 
     let app = crate::engine::app::App::new();
-    let mut app = app.borrow_mut();
+    let app = app.borrow();
 
     let viewport = Viewport::new();
     let gl = viewport.borrow().gl();
@@ -33,7 +33,7 @@ pub fn start() -> Result<(), JsValue> {
 
     let mut game_manager = GameObject::new();
     // game_manager.add_component(Box::new(CameraPan::new(Rc::clone(&viewport), Rc::clone(&unlit_texture_bicubic))));
-    game_manager.add_component(Box::new(ClearCanvas::new(Rc::clone(&viewport))));
+    game_manager.add_component(Box::new(ClearCanvas::new(Rc::clone(&viewport))), &app);
     app.add_game_object(game_manager);
 
     // let start_cells = "........................O...........
@@ -56,7 +56,7 @@ pub fn start() -> Result<(), JsValue> {
     let reaction_diffusion = Rc::new(create_shader_program(&gl, include_str!("shaders/reaction_diffusion.vert"), include_str!("shaders/reaction_diffusion.frag")));
     let reaction_diffusion_render = Rc::new(create_shader_program(&gl, include_str!("shaders/reaction_diffusion_render.vert"), include_str!("shaders/reaction_diffusion_render.frag")));
     let mut reaction_diffusion_object = GameObject::new();
-    reaction_diffusion_object.add_component(Box::new(ReactionDiffusion::new(Rc::clone(&viewport), Rc::clone(&unlit_texture_bicubic), Rc::clone(&reaction_diffusion), Rc::clone(&reaction_diffusion_render))));
+    reaction_diffusion_object.add_component(Box::new(ReactionDiffusion::new(Rc::clone(&viewport), Rc::clone(&unlit_texture_bicubic), Rc::clone(&reaction_diffusion), Rc::clone(&reaction_diffusion_render))), &app);
     app.add_game_object(reaction_diffusion_object);
 
     Ok(())

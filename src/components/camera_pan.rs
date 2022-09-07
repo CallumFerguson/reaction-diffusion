@@ -5,6 +5,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::Closure;
 use web_sys::WebGlProgram;
 use crate::{Component, Viewport};
+use crate::engine::app::App;
 
 pub struct CameraPan {
     viewport: Rc<RefCell<Viewport>>,
@@ -21,7 +22,7 @@ impl CameraPan {
 }
 
 impl Component for CameraPan {
-    fn on_add_to_game_object(&mut self) {
+    fn on_add_to_game_object(&mut self, app: &App) {
         let viewport = &self.viewport;
 
         let canvas = viewport.borrow().canvas();
@@ -113,7 +114,7 @@ impl Component for CameraPan {
         event_closure.forget();
     }
 
-    fn on_pre_render(&mut self) {
-        self.viewport.borrow().update_uniforms_in_shader();
-    }
+    // fn on_pre_render(&mut self, app: &mut App) {
+    //     self.viewport.borrow().update_uniforms_in_shader();
+    // }
 }

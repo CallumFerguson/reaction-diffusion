@@ -3,15 +3,20 @@ use std::rc::Rc;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::Closure;
 use crate::{GameObject};
+use crate::engine::game_object;
 
 pub struct App {
-    game_objects: Vec<GameObject>
+    game_objects: RefCell<Vec<GameObject>>,
+    game_objects_to_be_added: RefCell<Vec<GameObject>>,
+    pointer_down: bool,
 }
 
 impl App {
     pub fn new() -> Rc<RefCell<App>> {
         let app = App {
-            game_objects: Vec::new()
+            game_objects: RefCell::new(Vec::new()),
+            game_objects_to_be_added: RefCell::new(Vec::new()),
+            pointer_down: false,
         };
         let app = Rc::new(RefCell::new(app));
 
@@ -40,6 +45,14 @@ impl App {
         window.add_event_listener_with_callback("resize", event_closure.as_ref().unchecked_ref()).unwrap();
         event_closure.forget();
 
+        let app_outer = Rc::clone(&app);
+        let event_closure = Closure::<dyn FnMut()>::new(move || {
+            app.borrow_mut().pointer_down = true;
+        });
+        let app = app_outer;
+        window.add_event_listener_with_callback("pointerdown", event_closure.as_ref().unchecked_ref()).unwrap();
+        event_closure.forget();
+
         let animation_loop_closure = Rc::new(RefCell::new(None::<Closure<dyn FnMut(_)>>));
         let animation_loop_closure_outer = animation_loop_closure.clone();
 
@@ -51,42 +64,57 @@ impl App {
 
         let app_outer = Rc::clone(&app);
         *animation_loop_closure_outer.borrow_mut() = Some(Closure::<dyn FnMut(_)>::new(move |now: f64| {
-            let mut app = app.borrow_mut();
+            {
+                let app = app.borrow();
 
-            let now = now * 0.001;
-            if start_time < 0.0 {
-                start_time = now;
-            }
-            let unscaled_time = now - start_time;
-            let _delta_time = unscaled_time - last_unscaled_time;
-            last_unscaled_time = unscaled_time;
-            // console_log!("{}", 1.0 / delta_time);
+                let now = now * 0.001;
+                if start_time < 0.0 {
+                    start_time = now;
+                }
+                let unscaled_time = now - start_time;
+                let _delta_time = unscaled_time - last_unscaled_time;
+                last_unscaled_time = unscaled_time;
+                // console_log!("{}", 1.0 / delta_time);
 
-            if *resized.borrow() {
-                *resized.borrow_mut() = false;
-                for game_object in &mut app.game_objects {
-                    for component in game_object.components_iter() {
-                        component.on_resize(*screen_width.borrow(), *screen_height.borrow());
+                {
+                    let mut game_objects_to_be_added = app.game_objects_to_be_added.borrow_mut();
+                    let mut game_objects = app.game_objects.borrow_mut();
+                    while game_objects_to_be_added.len() > 0 {
+                        game_objects.push(game_objects_to_be_added.pop().unwrap());
+                    }
+                }
+
+                if *resized.borrow() {
+                    *resized.borrow_mut() = false;
+                    for game_object in app.game_objects.borrow().iter() {
+                        for component in game_object.components().borrow_mut().iter_mut() {
+                            component.on_resize(*screen_width.borrow(), *screen_height.borrow(), &app);
+                        }
+                    }
+                }
+
+                for game_object in app.game_objects.borrow().iter() {
+                    for component in game_object.components().borrow_mut().iter_mut() {
+                        component.on_update(&app);
+                    }
+                }
+
+                for game_object in app.game_objects.borrow().iter() {
+                    for component in game_object.components().borrow_mut().iter_mut() {
+                        component.on_pre_render(&app);
+                    }
+                }
+
+                for game_object in app.game_objects.borrow().iter() {
+                    for component in game_object.components().borrow_mut().iter_mut() {
+                        component.on_render(&app);
                     }
                 }
             }
 
-            for game_object in &mut app.game_objects {
-                for component in game_object.components_iter() {
-                    component.on_update();
-                }
-            }
-
-            for game_object in &mut app.game_objects {
-                for component in game_object.components_iter() {
-                    component.on_pre_render();
-                }
-            }
-
-            for game_object in &mut app.game_objects {
-                for component in game_object.components_iter() {
-                    component.on_render();
-                }
+            {
+                let mut app = app.borrow_mut();
+                app.pointer_down = false;
             }
 
             window.request_animation_frame(animation_loop_closure.borrow().as_ref().unwrap().as_ref().unchecked_ref()).expect("request_animation_frame failed");
@@ -100,7 +128,11 @@ impl App {
 }
 
 impl App {
-    pub fn add_game_object(&mut self, game_object: GameObject) {
-        self.game_objects.push(game_object);
+    pub fn add_game_object(&self, game_object: GameObject) {
+        self.game_objects_to_be_added.borrow_mut().push(game_object);
+    }
+
+    pub fn pointer_down(&self) -> bool {
+        return self.pointer_down;
     }
 }

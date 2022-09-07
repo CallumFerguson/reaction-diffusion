@@ -3,7 +3,8 @@ use std::rc::Rc;
 use glam::{Mat4, Quat, Vec3};
 use rand::Rng;
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlFramebuffer, WebGlProgram, WebGlTexture, WebGlVertexArrayObject};
-use crate::{Component, create_shader_program, Viewport};
+use crate::{ClearCanvas, Component, create_shader_program, GameObject, Viewport};
+use crate::engine::app::App;
 use crate::utils::{compile_shader, link_program};
 
 // const CELLS_WIDTH: i32 = 512;
@@ -15,7 +16,7 @@ use crate::utils::{compile_shader, link_program};
 // const K: f32 = 0.062;
 // const DELTA_T: f32 = 1.0;
 
-const SIMULATION_SCALE: f32 = 1.5;
+const SIMULATION_SCALE: f32 = 1.0;
 
 pub struct ReactionDiffusion {
     vao: Option<WebGlVertexArrayObject>,
@@ -64,7 +65,7 @@ impl ReactionDiffusion {
 }
 
 impl Component for ReactionDiffusion {
-    fn on_add_to_game_object(&mut self) {
+    fn on_add_to_game_object(&mut self, app: &App) {
         let viewport = self.viewport.borrow();
         let gl = viewport.gl();
 
@@ -138,7 +139,7 @@ impl Component for ReactionDiffusion {
         self.fbo = Some(Box::new(gl.create_framebuffer().unwrap()));
     }
 
-    fn on_resize(&mut self, width: i32, height: i32) {
+    fn on_resize(&mut self, width: i32, height: i32, app: &App) {
         let viewport = self.viewport.borrow();
         let gl = viewport.gl();
 
@@ -198,7 +199,7 @@ impl Component for ReactionDiffusion {
         ).unwrap();
     }
 
-    fn on_update(&mut self) {
+    fn on_update(&mut self, app: &App) {
         let viewport = self.viewport.borrow();
         let gl = viewport.gl();
 
@@ -288,7 +289,7 @@ impl Component for ReactionDiffusion {
         // }
     }
 
-    fn on_render(&mut self) {
+    fn on_render(&mut self, app: &App) {
         let gl = self.viewport.borrow().gl();
 
         // gl.bind_vertex_array(self.vao.as_ref());

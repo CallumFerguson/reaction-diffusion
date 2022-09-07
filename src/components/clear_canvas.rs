@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use web_sys::WebGl2RenderingContext;
 use crate::{Component, Viewport};
+use crate::engine::app::App;
 
 pub struct ClearCanvas {
     viewport: Rc<RefCell<Viewport>>,
@@ -16,7 +17,7 @@ impl ClearCanvas {
 }
 
 impl Component for ClearCanvas {
-    fn on_pre_render(&mut self) {
+    fn on_pre_render(&mut self, app: &App) {
         let gl = self.viewport.borrow().gl();
         gl.clear_color(0.0, 0.0, 0.0, 1.0);
         gl.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);

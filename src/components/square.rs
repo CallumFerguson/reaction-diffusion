@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlVertexArrayObject};
 use crate::{Component, Viewport};
+use crate::engine::app::App;
 
 pub struct Square {
     vao: Option<WebGlVertexArrayObject>,
@@ -22,7 +23,7 @@ impl Square {
 }
 
 impl Component for Square {
-    fn on_add_to_game_object(&mut self) {
+    fn on_add_to_game_object(&mut self, app: &App) {
         let gl = self.viewport.borrow().gl();
 
         self.vao = gl.create_vertex_array();
@@ -64,7 +65,7 @@ impl Component for Square {
         }
     }
 
-    fn on_render(&mut self) {
+    fn on_render(&mut self, app: &App) {
         let gl = self.viewport.borrow().gl();
 
         gl.bind_vertex_array(self.vao.as_ref());

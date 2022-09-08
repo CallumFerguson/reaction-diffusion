@@ -1,22 +1,19 @@
-use std::cell::RefCell;
 use std::rc::Rc;
-use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlVertexArrayObject};
-use crate::{Component, Viewport};
+use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlVertexArrayObject};
+use crate::{Component};
 use crate::engine::app::App;
 
 pub struct Square {
     vao: Option<WebGlVertexArrayObject>,
     program: Rc<WebGlProgram>,
-    viewport: Rc<RefCell<Viewport>>,
     indices_count: i32
 }
 
 impl Square {
-    pub fn new(viewport: Rc<RefCell<Viewport>>, program: Rc<WebGlProgram>) -> Self {
+    pub fn new(program: Rc<WebGlProgram>) -> Self {
         return Self {
             vao: None,
             program,
-            viewport,
             indices_count: 0
         }
     }
@@ -24,7 +21,7 @@ impl Square {
 
 impl Component for Square {
     fn on_add_to_game_object(&mut self, app: &App) {
-        let gl = self.viewport.borrow().gl();
+        let gl = app.gl();
 
         self.vao = gl.create_vertex_array();
         gl.bind_vertex_array(self.vao.as_ref());
@@ -66,7 +63,7 @@ impl Component for Square {
     }
 
     fn on_render(&mut self, app: &App) {
-        let gl = self.viewport.borrow().gl();
+        let gl = app.gl();
 
         gl.bind_vertex_array(self.vao.as_ref());
         gl.use_program(Some(&self.program));

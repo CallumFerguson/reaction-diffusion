@@ -1,21 +1,10 @@
-use std::cell::RefCell;
 use std::rc::Rc;
 use glam::{Mat4, Quat, Vec3};
-use rand::Rng;
-use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlFramebuffer, WebGlProgram, WebGlTexture, WebGlVertexArrayObject};
-use crate::{ClearCanvas, Component, create_shader_program, GameObject, Viewport};
+use web_sys::{WebGl2RenderingContext, WebGlFramebuffer, WebGlProgram, WebGlTexture, WebGlVertexArrayObject};
+use crate::{Component, create_shader_program};
 use crate::engine::app::App;
 use crate::engine::app::input::Button::Left;
-use crate::utils::{compile_shader, distance, lerp, link_program};
-
-// const CELLS_WIDTH: i32 = 512;
-// const CELLS_HEIGHT: i32 = 512;
-
-// const D_A: f32 = 1.0;
-// const D_B: f32 = 0.5;
-// const F: f32 = 0.055;
-// const K: f32 = 0.062;
-// const DELTA_T: f32 = 1.0;
+use crate::utils::{distance, lerp};
 
 const SIMULATION_SCALE: f32 = 1.5;
 
@@ -273,72 +262,14 @@ impl Component for ReactionDiffusion {
 
         // reset back to rendering to canvas
         gl.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, None);
-        // viewport.set_gl_viewport_to_current_width_height();
         gl.viewport(0, 0, app.screen().width(), app.screen().height());
-
-        // let kernel = [
-        //     [0.05, 0.2, 0.05],
-        //     [0.2, -1.0, 0.2],
-        //     [0.05, 0.2, 0.05]
-        // ];
-        //
-        // for x in 0..CELLS_WIDTH {
-        //     for y in 0..CELLS_HEIGHT {
-        //         let i = cell_xy_to_index(x, y);
-        //
-        //         let a = u16float_to_float(self.cells[i]);
-        //         let b = u16float_to_float(self.cells[i + 1]);
-        //
-        //         let mut nabla_squared_a = 0.0;
-        //         let mut nabla_squared_b = 0.0;
-        //
-        //         for nx in -1..=1 {
-        //             for ny in -1..=1 {
-        //                 let i = cell_xy_to_index(x + nx, y + ny);
-        //
-        //                 let a = u16float_to_float(self.cells[i]);
-        //                 nabla_squared_a += a * kernel[(2 - (ny + 1)) as usize][(nx + 1) as usize];
-        //
-        //                 let b = u16float_to_float(self.cells[i + 1]);
-        //                 nabla_squared_b += b * kernel[(2 - (ny + 1)) as usize][(nx + 1) as usize];
-        //             }
-        //         }
-        //
-        //         let a_prime = a + (D_A * nabla_squared_a - a * b * b + F * (1.0 - a)) * DELTA_T;
-        //         let b_prime = b + (D_B * nabla_squared_b + a * b * b - (K + F) * b) * DELTA_T;
-        //
-        //         self.cells_next[i] = float_to_u16float(a_prime);
-        //         self.cells_next[i + 1] = float_to_u16float(b_prime);
-        //     }
-        // }
-        //
-        // std::mem::swap(&mut self.cells, &mut self.cells_next);
-        //
-        // unsafe {
-        //     let view = js_sys::Uint16Array::view(&self.cells);
-        //
-        //     gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_array_buffer_view_and_src_offset(
-        //         WebGl2RenderingContext::TEXTURE_2D,
-        //         0,
-        //         WebGl2RenderingContext::RG16UI as i32,
-        //         CELLS_WIDTH,
-        //         CELLS_HEIGHT,
-        //         0,
-        //         WebGl2RenderingContext::RG_INTEGER,
-        //         WebGl2RenderingContext::UNSIGNED_SHORT,
-        //         &view,
-        //         0,
-        //     ).unwrap();
-        // }
     }
 
     fn on_render(&mut self, app: &App) {
         let gl = app.gl();
 
-        // gl.bind_vertex_array(self.vao.as_ref());
         gl.bind_vertex_array(self.render_texture_vao.as_ref());
         gl.use_program(Some(&self.unlit_texture_bicubic));
-        // gl.use_program(Some(&self.reaction_diffusion_render));
 
         gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
     }

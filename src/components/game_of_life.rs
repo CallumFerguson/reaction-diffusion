@@ -1,8 +1,7 @@
-use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlVertexArrayObject};
-use crate::{Component, Viewport};
+use crate::Component;
 use crate::engine::app::App;
 
 const BUFFER_SIZE: i32 = 1024 * 1024 * 100; // 100Mib
@@ -16,11 +15,10 @@ pub struct GameOfLife {
     vao: Rc<Option<WebGlVertexArrayObject>>,
     program: Rc<WebGlProgram>,
     buffer: Option<WebGlBuffer>,
-    viewport: Rc<RefCell<Viewport>>
 }
 
 impl GameOfLife {
-    pub fn new(viewport: Rc<RefCell<Viewport>>, program: Rc<WebGlProgram>, start_cells: &'static str, start_cells_offset: (i32, i32)) -> Self {
+    pub fn new(program: Rc<WebGlProgram>, start_cells: &'static str, start_cells_offset: (i32, i32)) -> Self {
         return Self {
             start_cells,
             start_cells_offset,
@@ -30,15 +28,13 @@ impl GameOfLife {
             vao: Rc::new(None),
             program,
             buffer: None,
-            viewport,
         };
     }
 }
 
 impl Component for GameOfLife {
     fn on_add_to_game_object(&mut self, app: &App) {
-        let viewport = &self.viewport;
-        let gl = viewport.borrow().gl();
+        let gl = app.gl();
 
         self.vao = Rc::new(Some(gl
             .create_vertex_array()
@@ -77,9 +73,7 @@ impl Component for GameOfLife {
     }
 
     fn on_update(&mut self, app: &App) {
-        let viewport = &self.viewport;
-        let viewport = viewport.borrow();
-        let gl = viewport.gl();
+        let gl = app.gl();
 
         gl.bind_vertex_array(self.vao.as_ref().as_ref());
         gl.use_program(Some(&self.program));
@@ -113,7 +107,7 @@ impl Component for GameOfLife {
     }
 
     fn on_render(&mut self, app: &App) {
-        let gl = self.viewport.borrow().gl();
+        let gl = app.gl();
 
         gl.bind_vertex_array(self.vao.as_ref().as_ref());
         gl.use_program(Some(&self.program));

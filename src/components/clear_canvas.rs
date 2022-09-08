@@ -1,7 +1,5 @@
-use std::cell::RefCell;
-use std::rc::Rc;
 use web_sys::WebGl2RenderingContext;
-use crate::{Component, Viewport};
+use crate::Component;
 use crate::engine::app::App;
 
 pub struct ClearCanvas {}

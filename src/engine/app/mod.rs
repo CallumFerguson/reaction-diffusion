@@ -6,7 +6,6 @@ use web_sys::{HtmlCanvasElement, WebGl2RenderingContext};
 use crate::{GameObject};
 use crate::engine::app::input::Input;
 use crate::engine::app::screen::Screen;
-use crate::engine::game_object;
 
 pub mod input;
 pub mod screen;

@@ -1,3 +1,5 @@
+extern crate core;
+
 use wasm_bindgen::prelude::*;
 use console_error_panic_hook::hook;
 use std::rc::Rc;
@@ -24,16 +26,16 @@ pub fn start() -> Result<(), JsValue> {
     console_log!("starting webgl");
 
     let app = crate::engine::app::App::new();
+    app.borrow_mut().init_gl();
     let app = app.borrow();
 
-    let viewport = Viewport::new();
-    let gl = viewport.borrow().gl();
+    let gl = app.gl();
 
     let unlit_texture_bicubic = Rc::new(create_shader_program(&gl, include_str!("shaders/basic_bicubic.vert"), include_str!("shaders/basic_bicubic.frag")));
 
-    let mut game_manager = GameObject::new();
+    let game_manager = GameObject::new();
     // game_manager.add_component(Box::new(CameraPan::new(Rc::clone(&viewport), Rc::clone(&unlit_texture_bicubic))));
-    game_manager.add_component(Box::new(ClearCanvas::new(Rc::clone(&viewport))), &app);
+    game_manager.add_component(Box::new(ClearCanvas::new()), &app);
     app.add_game_object(game_manager);
 
     // let start_cells = "........................O...........
@@ -45,18 +47,18 @@ pub fn start() -> Result<(), JsValue> {
     //                    ..........O.....O.......O...........
     //                    ...........O...O....................
     //                    ............OO......................";
-    // let mut game_of_life_object = GameObject::new();
+    // let game_of_life_object = GameObject::new();
     // game_of_life_object.add_component(Box::new(GameOfLife::new(Rc::clone(&viewport), Rc::clone(&program), start_cells, (0, 0))));
     // app.add_game_object(game_of_life_object);
 
-    // let mut square_object = GameObject::new();
+    // let square_object = GameObject::new();
     // square_object.add_component(Box::new(Square::new(Rc::clone(&viewport), Rc::clone(&program))));
     // app.add_game_object(square_object);
 
     let reaction_diffusion = Rc::new(create_shader_program(&gl, include_str!("shaders/reaction_diffusion.vert"), include_str!("shaders/reaction_diffusion.frag")));
     let reaction_diffusion_render = Rc::new(create_shader_program(&gl, include_str!("shaders/reaction_diffusion_render.vert"), include_str!("shaders/reaction_diffusion_render.frag")));
-    let mut reaction_diffusion_object = GameObject::new();
-    reaction_diffusion_object.add_component(Box::new(ReactionDiffusion::new(Rc::clone(&viewport), Rc::clone(&unlit_texture_bicubic), Rc::clone(&reaction_diffusion), Rc::clone(&reaction_diffusion_render))), &app);
+    let reaction_diffusion_object = GameObject::new();
+    reaction_diffusion_object.add_component(Box::new(ReactionDiffusion::new(&app, Rc::clone(&unlit_texture_bicubic), Rc::clone(&reaction_diffusion), Rc::clone(&reaction_diffusion_render))), &app);
     app.add_game_object(reaction_diffusion_object);
 
     Ok(())

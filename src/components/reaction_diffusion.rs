@@ -17,7 +17,7 @@ use crate::utils::{compile_shader, distance, lerp, link_program};
 // const K: f32 = 0.062;
 // const DELTA_T: f32 = 1.0;
 
-const SIMULATION_SCALE: f32 = 1.0;
+const SIMULATION_SCALE: f32 = 1.5;
 
 pub struct ReactionDiffusion {
     quad_vao: Option<WebGlVertexArrayObject>,
@@ -27,7 +27,6 @@ pub struct ReactionDiffusion {
     reaction_diffusion_render: Rc<WebGlProgram>,
     basic_rg16ui: WebGlProgram,
     unlit_color_on_rg16ui: WebGlProgram,
-    viewport: Rc<RefCell<Viewport>>,
     indices_count: i32,
     fbo: Option<Box<WebGlFramebuffer>>,
     input_texture: Option<Box<WebGlTexture>>,
@@ -39,15 +38,12 @@ pub struct ReactionDiffusion {
 }
 
 impl ReactionDiffusion {
-    pub fn new(viewport: Rc<RefCell<Viewport>>, unlit_texture_bicubic: Rc<WebGlProgram>, reaction_diffusion: Rc<WebGlProgram>, reaction_diffusion_render: Rc<WebGlProgram>) -> Self {
-        let gl = viewport.borrow().gl();
-        let mut width = 512;
-        let mut height = 512;
-        {
-            let vp = viewport.borrow();
-            width = (vp.width() as f32 / SIMULATION_SCALE).round() as i32;
-            height = (vp.height() as f32 / SIMULATION_SCALE).round() as i32;
-        }
+    pub fn new(app: &App, unlit_texture_bicubic: Rc<WebGlProgram>, reaction_diffusion: Rc<WebGlProgram>, reaction_diffusion_render: Rc<WebGlProgram>) -> Self {
+        let gl = app.gl();
+
+        let width = (app.screen().width() as f32 / SIMULATION_SCALE).round() as i32;
+        let height = (app.screen().height() as f32 / SIMULATION_SCALE).round() as i32;
+
         return Self {
             quad_vao: None,
             render_texture_vao: None,
@@ -56,7 +52,6 @@ impl ReactionDiffusion {
             reaction_diffusion_render,
             basic_rg16ui: create_shader_program(&gl, include_str!("../shaders/basic_RG16UI.vert"), include_str!("../shaders/basic_RG16UI.frag")),
             unlit_color_on_rg16ui: create_shader_program(&gl, include_str!("../shaders/unlit_color_on_RG16UI.vert"), include_str!("../shaders/unlit_color_on_RG16UI.frag")),
-            viewport,
             indices_count: 0,
             fbo: None,
             input_texture: None,
@@ -71,8 +66,7 @@ impl ReactionDiffusion {
 
 impl Component for ReactionDiffusion {
     fn on_add_to_game_object(&mut self, app: &App) {
-        let viewport = self.viewport.borrow();
-        let gl = viewport.gl();
+        let gl = app.gl();
 
         let vertices = [-0.5, 0.5, 0.0, 0.5, 0.5, 0.0, 0.5, -0.5, 0.0, -0.5, -0.5, 0.0];
         self.quad_vao = Some(init_quad(&gl, &self.unlit_color_on_rg16ui, &vertices));
@@ -145,10 +139,11 @@ impl Component for ReactionDiffusion {
         self.fbo = Some(Box::new(gl.create_framebuffer().unwrap()));
     }
 
-    fn on_resize(&mut self, width: i32, height: i32, app: &App) {
-        let viewport = self.viewport.borrow();
-        let gl = viewport.gl();
+    fn on_resize(&mut self, app: &App) {
+        let gl = app.gl();
 
+        let width = app.screen().width();
+        let height = app.screen().height();
         self.width = (width as f32 / SIMULATION_SCALE).round() as i32;
         self.height = (height as f32 / SIMULATION_SCALE).round() as i32;
 
@@ -206,8 +201,7 @@ impl Component for ReactionDiffusion {
     }
 
     fn on_update(&mut self, app: &App) {
-        let viewport = self.viewport.borrow();
-        let gl = viewport.gl();
+        let gl = app.gl();
 
         if app.input().get_button_down(Left) || app.input().get_button(Left) && app.input().mouse_delta_position() != (0, 0) {
             gl.bind_vertex_array(self.quad_vao.as_ref());
@@ -221,7 +215,7 @@ impl Component for ReactionDiffusion {
             let loc = gl.get_uniform_location(&self.unlit_color_on_rg16ui, "u_view");
             gl.uniform_matrix4fv_with_f32_array(loc.as_ref(), false, mat.as_ref());
 
-            let mat = Mat4::orthographic_rh_gl(0.0, viewport.width() as f32, viewport.height() as f32, 0.0, -1.0, 1.0);
+            let mat = Mat4::orthographic_rh_gl(0.0, app.screen().width() as f32, app.screen().height() as f32, 0.0, -1.0, 1.0);
             let loc = gl.get_uniform_location(&self.unlit_color_on_rg16ui, "u_projection");
             gl.uniform_matrix4fv_with_f32_array(loc.as_ref(), false, mat.as_ref());
 
@@ -279,7 +273,8 @@ impl Component for ReactionDiffusion {
 
         // reset back to rendering to canvas
         gl.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, None);
-        viewport.set_gl_viewport_to_current_width_height();
+        // viewport.set_gl_viewport_to_current_width_height();
+        gl.viewport(0, 0, app.screen().width(), app.screen().height());
 
         // let kernel = [
         //     [0.05, 0.2, 0.05],
@@ -338,7 +333,7 @@ impl Component for ReactionDiffusion {
     }
 
     fn on_render(&mut self, app: &App) {
-        let gl = self.viewport.borrow().gl();
+        let gl = app.gl();
 
         // gl.bind_vertex_array(self.vao.as_ref());
         gl.bind_vertex_array(self.render_texture_vao.as_ref());

@@ -2,49 +2,70 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::Closure;
+use web_sys::{HtmlCanvasElement, WebGl2RenderingContext};
 use crate::{GameObject};
 use crate::engine::app::input::Input;
+use crate::engine::app::screen::Screen;
 use crate::engine::game_object;
 
 pub mod input;
+pub mod screen;
 
 pub struct App {
+    canvas: HtmlCanvasElement,
+    gl: Option<WebGl2RenderingContext>,
     game_objects: RefCell<Vec<GameObject>>,
     game_objects_to_be_added: RefCell<Vec<GameObject>>,
     input: Input,
+    screen: Screen,
 }
 
 impl App {
     pub fn new() -> Rc<RefCell<App>> {
-        let app = App {
+        let window = Rc::new(web_sys::window().expect("no global `window` exists"));
+        let document = window.document().unwrap();
+        let body = document.body().expect("document should have a body");
+
+        let width = window.inner_width().unwrap().as_f64().unwrap() as i32;
+        let height = window.inner_height().unwrap().as_f64().unwrap() as i32;
+
+        let canvas = document.create_element("canvas").unwrap();
+        canvas.set_attribute("width", &width.to_string()).unwrap();
+        canvas.set_attribute("height", &height.to_string()).unwrap();
+        body.append_child(&canvas).unwrap();
+        let canvas: HtmlCanvasElement = canvas.dyn_into::<HtmlCanvasElement>().unwrap();
+
+        let mut app = App {
+            canvas,
+            gl: None,
             game_objects: RefCell::new(Vec::new()),
             game_objects_to_be_added: RefCell::new(Vec::new()),
             input: Input::new(),
+            screen: Screen::new((width, height)),
         };
         let app = Rc::new(RefCell::new(app));
 
-        let window = Rc::new(web_sys::window().expect("no global `window` exists"));
-
         let resized = Rc::new(RefCell::new(false));
-        let screen_width = Rc::new(RefCell::new(0));
-        let screen_height = Rc::new(RefCell::new(0));
 
         let window_outer = Rc::clone(&window);
         let resized_outer = Rc::clone(&resized);
-        let screen_width_outer = Rc::clone(&screen_width);
-        let screen_height_outer = Rc::clone(&screen_height);
+        let app_outer = Rc::clone(&app);
         let event_closure = Closure::<dyn FnMut()>::new(move || {
-            let width = window.inner_width().unwrap().as_f64().unwrap() as i32;
-            let height = window.inner_height().unwrap().as_f64().unwrap() as i32;
+            let mut app = app.borrow_mut();
 
             *resized.borrow_mut() = true;
-            *screen_width.borrow_mut() = width;
-            *screen_height.borrow_mut() = height;
+
+            let width = window.inner_width().unwrap().as_f64().unwrap() as i32;
+            let height = window.inner_height().unwrap().as_f64().unwrap() as i32;
+            app.screen.set_size((width, height));
+
+            let canvas = app.canvas();
+            canvas.set_attribute("width", &width.to_string()).unwrap();
+            canvas.set_attribute("height", &height.to_string()).unwrap();
         });
         let window = window_outer;
         let resized = resized_outer;
-        let screen_width = screen_width_outer;
-        let screen_height = screen_height_outer;
+        let app = app_outer;
         window.add_event_listener_with_callback("resize", event_closure.as_ref().unchecked_ref()).unwrap();
         event_closure.forget();
 
@@ -53,8 +74,8 @@ impl App {
             app.borrow_mut().input.set_buttons(event.buttons());
         });
         let app = app_outer;
-        window.add_event_listener_with_callback("mousedown", event_closure.as_ref().unchecked_ref()).unwrap();
-        window.add_event_listener_with_callback("mouseup", event_closure.as_ref().unchecked_ref()).unwrap();
+        app.borrow().canvas().add_event_listener_with_callback("mousedown", event_closure.as_ref().unchecked_ref()).unwrap();
+        app.borrow().canvas().add_event_listener_with_callback("mouseup", event_closure.as_ref().unchecked_ref()).unwrap();
         event_closure.forget();
 
         let app_outer = Rc::clone(&app);
@@ -63,7 +84,7 @@ impl App {
             app.borrow_mut().input.set_mouse_position((event.offset_x(), event.offset_y()));
         });
         let app = app_outer;
-        window.add_event_listener_with_callback("mousemove", event_closure.as_ref().unchecked_ref()).unwrap();
+        app.borrow().canvas().add_event_listener_with_callback("mousemove", event_closure.as_ref().unchecked_ref()).unwrap();
         event_closure.forget();
 
         let animation_loop_closure = Rc::new(RefCell::new(None::<Closure<dyn FnMut(_)>>));
@@ -101,7 +122,7 @@ impl App {
                     *resized.borrow_mut() = false;
                     for game_object in app.game_objects.borrow().iter() {
                         for component in game_object.components().borrow_mut().iter_mut() {
-                            component.on_resize(*screen_width.borrow(), *screen_height.borrow(), &app);
+                            component.on_resize(&app);
                         }
                     }
                 }
@@ -152,5 +173,26 @@ impl App {
 
     pub fn input(&self) -> &Input {
         return &self.input;
+    }
+
+    pub fn screen(&self) -> &Screen {
+        return &self.screen;
+    }
+
+    pub fn canvas(&self) -> &HtmlCanvasElement {
+        return &self.canvas;
+    }
+
+    pub fn init_gl(&mut self) {
+        if self.gl == None {
+            self.gl = Some(self.canvas
+                .get_context("webgl2").unwrap()
+                .unwrap()
+                .dyn_into::<WebGl2RenderingContext>().unwrap());
+        }
+    }
+
+    pub fn gl(&self) -> &WebGl2RenderingContext {
+        return self.gl.as_ref().unwrap();
     }
 }

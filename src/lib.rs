@@ -4,9 +4,9 @@ use std::rc::Rc;
 use crate::components::clear_canvas::ClearCanvas;
 use crate::engine::component::Component;
 use crate::engine::game_object::GameObject;
-use crate::rendering::viewport::Viewport;
 use crate::utils::create_shader_program;
 use crate::components::reaction_diffusion::ReactionDiffusion;
+use crate::components::reaction_diffusion_ui::ReactionDiffusionUI;
 
 #[macro_use]
 mod utils;
@@ -34,6 +34,8 @@ pub fn start() -> Result<(), JsValue> {
     let reaction_diffusion = Rc::new(create_shader_program(&gl, include_str!("shaders/reaction_diffusion.vert"), include_str!("shaders/reaction_diffusion.frag")));
     let reaction_diffusion_render = Rc::new(create_shader_program(&gl, include_str!("shaders/reaction_diffusion_render.vert"), include_str!("shaders/reaction_diffusion_render.frag")));
     game_manager.add_component(Box::new(ReactionDiffusion::new(&app, Rc::clone(&basic_bicubic), Rc::clone(&reaction_diffusion), Rc::clone(&reaction_diffusion_render))), &app);
+
+    game_manager.add_component(Box::new(ReactionDiffusionUI::new()), &app);
 
     app.add_game_object(game_manager);
 

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::Closure;
-use web_sys::{HtmlCanvasElement, WebGl2RenderingContext};
+use web_sys::{Document, HtmlCanvasElement, HtmlElement, WebGl2RenderingContext};
 use crate::{GameObject};
 use crate::engine::app::input::Input;
 use crate::engine::app::screen::Screen;
@@ -17,6 +17,8 @@ pub struct App {
     game_objects_to_be_added: RefCell<Vec<GameObject>>,
     input: Input,
     screen: Screen,
+    document: Document,
+    body: HtmlElement,
 }
 
 impl App {
@@ -29,18 +31,21 @@ impl App {
         let height = window.inner_height().unwrap().as_f64().unwrap() as i32;
 
         let canvas = document.create_element("canvas").unwrap();
+        canvas.set_id("main_canvas");
         canvas.set_attribute("width", &width.to_string()).unwrap();
         canvas.set_attribute("height", &height.to_string()).unwrap();
         body.append_child(&canvas).unwrap();
         let canvas: HtmlCanvasElement = canvas.dyn_into::<HtmlCanvasElement>().unwrap();
 
-        let mut app = App {
+        let app = App {
             canvas,
             gl: None,
             game_objects: RefCell::new(Vec::new()),
             game_objects_to_be_added: RefCell::new(Vec::new()),
             input: Input::new(),
             screen: Screen::new((width, height)),
+            document,
+            body,
         };
         let app = Rc::new(RefCell::new(app));
 
@@ -181,6 +186,9 @@ impl App {
     pub fn canvas(&self) -> &HtmlCanvasElement {
         return &self.canvas;
     }
+
+    pub fn document(&self) -> &Document { return &self.document; }
+    pub fn body(&self) -> &HtmlElement { return &self.body; }
 
     pub fn init_gl(&mut self) {
         if self.gl == None {

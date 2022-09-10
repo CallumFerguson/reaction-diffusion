@@ -22,16 +22,12 @@ impl ReactionDiffusionUI {
 }
 
 impl ReactionDiffusionUI {
-    pub fn add_clear_click_callback(&self, callback: Box<dyn FnMut()>) {
-        self.on_click_clear_functions.borrow_mut().push(callback);
+    pub fn add_clear_click_callback(&self, callback: impl FnMut() + 'static) {
+        self.on_click_clear_functions.borrow_mut().push(Box::new(callback));
     }
 }
 
 impl Component for ReactionDiffusionUI {
-    fn as_any(&mut self) -> &mut dyn Any {
-        return self;
-    }
-
     fn on_add_to_game_object(&mut self, app: &App) {
         let ui_div_parent = app.document().create_element("div").unwrap().dyn_into::<HtmlElement>().unwrap();
         let style = ui_div_parent.style();

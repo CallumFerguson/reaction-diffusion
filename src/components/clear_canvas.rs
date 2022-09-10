@@ -12,10 +12,6 @@ impl ClearCanvas {
 }
 
 impl Component for ClearCanvas {
-    fn as_any(&mut self) -> &mut dyn Any {
-        return self;
-    }
-
     fn on_pre_render(&mut self, app: &App) {
         let gl = app.gl();
         gl.clear_color(0.0, 0.0, 0.0, 1.0);

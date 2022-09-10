@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::cell::RefCell;
 use std::rc::Rc;
 use glam::{Mat4, Quat, Vec3};
 use web_sys::{WebGl2RenderingContext, WebGlFramebuffer, WebGlProgram, WebGlTexture, WebGlVertexArrayObject};
@@ -25,10 +26,11 @@ pub struct ReactionDiffusion {
     width: i32,
     height: i32,
     last_mouse_position: (i32, i32),
+    reaction_diffusion_ui: Rc<RefCell<ReactionDiffusionUI>>,
 }
 
 impl ReactionDiffusion {
-    pub fn new(app: &App) -> Self {
+    pub fn new(app: &App, reaction_diffusion_ui: Rc<RefCell<ReactionDiffusionUI>>) -> Self {
         let gl = app.gl();
 
         let width = (app.screen().width() as f32 / SIMULATION_SCALE).round() as i32;
@@ -50,15 +52,12 @@ impl ReactionDiffusion {
             width,
             height,
             last_mouse_position: (-1, -1),
+            reaction_diffusion_ui,
         };
     }
 }
 
 impl Component for ReactionDiffusion {
-    fn as_any(&mut self) -> &mut dyn Any {
-        return self;
-    }
-
     fn on_add_to_game_object(&mut self, app: &App) {
         let gl = app.gl();
 
@@ -131,6 +130,10 @@ impl Component for ReactionDiffusion {
         ).unwrap();
 
         self.fbo = Some(Box::new(gl.create_framebuffer().unwrap()));
+
+        self.reaction_diffusion_ui.borrow().add_clear_click_callback(move || {
+            console_log!("clear!");
+        });
     }
 
     fn on_resize(&mut self, app: &App) {

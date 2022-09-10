@@ -21,10 +21,6 @@ impl Square {
 }
 
 impl Component for Square {
-    fn as_any(&mut self) -> &mut dyn Any {
-        return self;
-    }
-
     fn on_add_to_game_object(&mut self, app: &App) {
         let gl = app.gl();
 

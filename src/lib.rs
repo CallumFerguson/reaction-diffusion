@@ -1,4 +1,5 @@
 use wasm_bindgen::prelude::*;
+use std::rc::Rc;
 use console_error_panic_hook::hook;
 use crate::components::clear_canvas::ClearCanvas;
 use crate::engine::component::Component;
@@ -19,9 +20,9 @@ pub fn start() -> Result<(), JsValue> {
 
     console_log!("starting app");
 
-    let app = crate::engine::app::App::new();
-    app.borrow_mut().init_gl();
-    let app = app.borrow();
+    let app_ref = crate::engine::app::App::new();
+    app_ref.borrow_mut().init_gl();
+    let app = app_ref.borrow();
 
     let gl = app.gl();
 
@@ -32,7 +33,14 @@ pub fn start() -> Result<(), JsValue> {
     game_manager.add_component(ReactionDiffusionUI::new(), &app);
 
     let rdui = game_manager.get_component::<ReactionDiffusionUI>().unwrap();
+    let rdui_clone = Rc::clone(&rdui);
     game_manager.add_component(ReactionDiffusion::new(&app, rdui), &app);
+
+    let rd = game_manager.get_component::<ReactionDiffusion>().unwrap();
+    let app_inner = Rc::clone(&app_ref);
+    rdui_clone.borrow().add_clear_click_callback(move || {
+        rd.borrow().clear(app_inner.borrow().gl());
+    });
 
     app.add_game_object(game_manager);
 

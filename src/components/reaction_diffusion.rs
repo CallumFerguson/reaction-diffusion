@@ -18,6 +18,7 @@ pub struct ReactionDiffusion {
     reaction_diffusion_render: WebGlProgram,
     basic_rg16ui: WebGlProgram,
     unlit_color_on_rg16ui: WebGlProgram,
+    basic_color_on_rg16_ui: WebGlProgram,
     indices_count: i32,
     fbo: Option<Box<WebGlFramebuffer>>,
     input_texture: Option<Box<WebGlTexture>>,
@@ -44,6 +45,7 @@ impl ReactionDiffusion {
             reaction_diffusion_render: create_shader_program(&gl, include_str!("../shaders/reaction_diffusion_render.vert"), include_str!("../shaders/reaction_diffusion_render.frag")),
             basic_rg16ui: create_shader_program(&gl, include_str!("../shaders/basic_RG16UI.vert"), include_str!("../shaders/basic_RG16UI.frag")),
             unlit_color_on_rg16ui: create_shader_program(&gl, include_str!("../shaders/unlit_color_on_RG16UI.vert"), include_str!("../shaders/unlit_color_on_RG16UI.frag")),
+            basic_color_on_rg16_ui: create_shader_program(&gl, include_str!("../shaders/basic_color_on_RG16UI.vert"), include_str!("../shaders/basic_color_on_RG16UI.frag")),
             indices_count: 0,
             fbo: None,
             input_texture: None,
@@ -54,6 +56,19 @@ impl ReactionDiffusion {
             last_mouse_position: (-1, -1),
             reaction_diffusion_ui,
         };
+    }
+}
+
+impl ReactionDiffusion {
+    pub fn clear(&self, gl: &WebGl2RenderingContext) {
+        gl.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, Some(self.fbo.as_ref().unwrap().as_ref()));
+        gl.viewport(0, 0, self.width, self.height);
+        gl.framebuffer_texture_2d(WebGl2RenderingContext::FRAMEBUFFER, WebGl2RenderingContext::COLOR_ATTACHMENT0, WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()), 0);
+
+        gl.bind_vertex_array(self.render_texture_vao.as_ref());
+        gl.use_program(Some(&self.basic_color_on_rg16_ui));
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.output_texture.as_ref().unwrap().as_ref()));
+        gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
     }
 }
 
@@ -131,9 +146,11 @@ impl Component for ReactionDiffusion {
 
         self.fbo = Some(Box::new(gl.create_framebuffer().unwrap()));
 
-        self.reaction_diffusion_ui.borrow().add_clear_click_callback(move || {
-            console_log!("clear!");
-        });
+        // self.reaction_diffusion_ui.borrow().add_clear_click_callback(move || {
+        //     r.clear(&gl);
+        // });
+
+        // self.clear(&gl);
     }
 
     fn on_resize(&mut self, app: &App) {

@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::rc::Rc;
 use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlVertexArrayObject};
 use crate::{Component};
@@ -20,6 +21,10 @@ impl Square {
 }
 
 impl Component for Square {
+    fn as_any(&mut self) -> &mut dyn Any {
+        return self;
+    }
+
     fn on_add_to_game_object(&mut self, app: &App) {
         let gl = app.gl();
 

@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::HashSet;
 use std::rc::Rc;
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlVertexArrayObject};
@@ -33,6 +34,10 @@ impl GameOfLife {
 }
 
 impl Component for GameOfLife {
+    fn as_any(&mut self) -> &mut dyn Any {
+        return self;
+    }
+
     fn on_add_to_game_object(&mut self, app: &App) {
         let gl = app.gl();
 

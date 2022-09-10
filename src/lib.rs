@@ -30,12 +30,17 @@ pub fn start() -> Result<(), JsValue> {
 
     game_manager.add_component(Box::new(ClearCanvas::new()), &app);
 
-    let basic_bicubic = Rc::new(create_shader_program(&gl, include_str!("shaders/basic_bicubic.vert"), include_str!("shaders/basic_bicubic.frag")));
-    let reaction_diffusion = Rc::new(create_shader_program(&gl, include_str!("shaders/reaction_diffusion.vert"), include_str!("shaders/reaction_diffusion.frag")));
-    let reaction_diffusion_render = Rc::new(create_shader_program(&gl, include_str!("shaders/reaction_diffusion_render.vert"), include_str!("shaders/reaction_diffusion_render.frag")));
-    game_manager.add_component(Box::new(ReactionDiffusion::new(&app, Rc::clone(&basic_bicubic), Rc::clone(&reaction_diffusion), Rc::clone(&reaction_diffusion_render))), &app);
+    let reaction_diffusion_ui = Box::new(ReactionDiffusionUI::new());
+    game_manager.add_component(reaction_diffusion_ui, &app);
 
-    game_manager.add_component(Box::new(ReactionDiffusionUI::new()), &app);
+    game_manager.add_component(Box::new(ReactionDiffusion::new(&app)), &app);
+
+    let component = game_manager.get_component::<ReactionDiffusionUI>().unwrap();
+    let mut component = component.borrow_mut();
+    let component = component.as_any();
+    component.downcast_ref::<ReactionDiffusionUI>().unwrap().add_clear_click_callback(Box::new(|| {
+        console_log!("reee 2");
+    }));
 
     app.add_game_object(game_manager);
 

@@ -29,9 +29,9 @@ pub fn start() -> Result<(), JsValue> {
     let mut game_manager = GameObject::new();
 
     // game_manager.add_component(Box::new(ClearCanvas::new()), &app);
-    game_manager.add_component(Box::new(Rc::new(Box::new(ClearCanvas::new()))), &app);
+    game_manager.add_component(ClearCanvas::new(), &app);
 
-    let c = game_manager.get_component();
+    let c = game_manager.get_component::<ClearCanvas>().unwrap();
     // let cc = GameObject::test(c);
 
     // let reaction_diffusion_ui = Box::new(ReactionDiffusionUI::new());

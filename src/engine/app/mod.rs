@@ -122,32 +122,32 @@ impl App {
                     }
                 }
 
-                if *resized.borrow() {
-                    *resized.borrow_mut() = false;
-                    for game_object in app.game_objects.borrow().iter() {
-                        for component in game_object.components().borrow_mut().iter_mut() {
-                            component.borrow_mut().on_resize(&app);
-                        }
-                    }
-                }
-
-                for game_object in app.game_objects.borrow().iter() {
-                    for component in game_object.components().borrow_mut().iter_mut() {
-                        component.borrow_mut().on_update(&app);
-                    }
-                }
-
-                for game_object in app.game_objects.borrow().iter() {
-                    for component in game_object.components().borrow_mut().iter_mut() {
-                        component.borrow_mut().on_pre_render(&app);
-                    }
-                }
-
-                for game_object in app.game_objects.borrow().iter() {
-                    for component in game_object.components().borrow_mut().iter_mut() {
-                        component.borrow_mut().on_render(&app);
-                    }
-                }
+                // if *resized.borrow() {
+                //     *resized.borrow_mut() = false;
+                //     for game_object in app.game_objects.borrow().iter() {
+                //         for component in game_object.components().borrow_mut().iter_mut() {
+                //             component.borrow_mut().on_resize(&app);
+                //         }
+                //     }
+                // }
+                //
+                // for game_object in app.game_objects.borrow().iter() {
+                //     for component in game_object.components().borrow_mut().iter_mut() {
+                //         component.borrow_mut().on_update(&app);
+                //     }
+                // }
+                //
+                // for game_object in app.game_objects.borrow().iter() {
+                //     for component in game_object.components().borrow_mut().iter_mut() {
+                //         component.borrow_mut().on_pre_render(&app);
+                //     }
+                // }
+                //
+                // for game_object in app.game_objects.borrow().iter() {
+                //     for component in game_object.components().borrow_mut().iter_mut() {
+                //         component.borrow_mut().on_render(&app);
+                //     }
+                // }
             }
 
             {

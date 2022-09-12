@@ -1,7 +1,7 @@
-use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 use glam::{Mat4, Quat, Vec3};
+use rand::Rng;
 use web_sys::{WebGl2RenderingContext, WebGlFramebuffer, WebGlProgram, WebGlTexture, WebGlVertexArrayObject};
 use crate::{Component, create_shader_program, ReactionDiffusionUI};
 use crate::engine::app::App;
@@ -9,6 +9,10 @@ use crate::engine::app::input::Button::Left;
 use crate::utils::{distance, lerp};
 
 const SIMULATION_SCALE: f32 = 1.5;
+
+const FEED_START: f32 = 0.055;
+const KILL_START: f32 = 0.062;
+const FEED_KILL_PAIRS: &'static [f32] = &[0.055, 0.062, 0.03, 0.062, 0.025, 0.06, 0.078, 0.061, 0.039, 0.058, 0.026, 0.051, 0.014, 0.054, 0.018, 0.051, 0.014, 0.045, 0.062, 0.061];
 
 pub struct ReactionDiffusion {
     quad_vao: Option<WebGlVertexArrayObject>,
@@ -28,6 +32,7 @@ pub struct ReactionDiffusion {
     height: i32,
     last_mouse_position: (i32, i32),
     reaction_diffusion_ui: Rc<RefCell<ReactionDiffusionUI>>,
+    current_feed_kill_pair_i: usize,
 }
 
 impl ReactionDiffusion {
@@ -55,6 +60,7 @@ impl ReactionDiffusion {
             height,
             last_mouse_position: (-1, -1),
             reaction_diffusion_ui,
+            current_feed_kill_pair_i: 0,
         };
     }
 }
@@ -84,11 +90,6 @@ impl Component for ReactionDiffusion {
 
         self.indices_count = 6;
 
-        // gl.use_program(Some(&self.unlit_texture_bicubic));
-        // let model = Mat4::from_scale_rotation_translation(Vec3::new(self.width as f32, self.height as f32, 1.0), Quat::IDENTITY, Vec3::new(0.0, 0.0, 0.0));
-        // let u_model_loc = gl.get_uniform_location(self.unlit_texture_bicubic.as_ref(), "u_model");
-        // gl.uniform_matrix4fv_with_f32_array(u_model_loc.as_ref(), false, model.as_ref());
-
         gl.use_program(Some(&self.reaction_diffusion));
         let u_kernel_loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "u_kernel");
         let kernel: [f32; 9] = [
@@ -97,6 +98,12 @@ impl Component for ReactionDiffusion {
             0.05, 0.2, 0.05
         ];
         gl.uniform1fv_with_f32_array(u_kernel_loc.as_ref(), &kernel);
+
+        let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "F");
+        gl.uniform1f(loc.as_ref(), FEED_START);
+
+        let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "K");
+        gl.uniform1f(loc.as_ref(), KILL_START);
 
         self.input_texture = Some(Box::new(create_and_bind_texture(&gl, WebGl2RenderingContext::NEAREST, WebGl2RenderingContext::REPEAT).unwrap()));
         let mut cells: Vec<u16> = vec![0; (self.width * self.height * 2) as usize];
@@ -145,12 +152,6 @@ impl Component for ReactionDiffusion {
         ).unwrap();
 
         self.fbo = Some(Box::new(gl.create_framebuffer().unwrap()));
-
-        // self.reaction_diffusion_ui.borrow().add_clear_click_callback(move || {
-        //     r.clear(&gl);
-        // });
-
-        // self.clear(&gl);
     }
 
     fn on_resize(&mut self, app: &App) {
@@ -222,7 +223,18 @@ impl Component for ReactionDiffusion {
         }
 
         if self.reaction_diffusion_ui.borrow().random_preset_button() {
-            console_log!("random!!!");
+            gl.use_program(Some(&self.reaction_diffusion));
+
+            let mut i = self.current_feed_kill_pair_i;
+            while i == self.current_feed_kill_pair_i {
+                i = rand::thread_rng().gen_range(0..(FEED_KILL_PAIRS.len() / 2)) * 2;
+            }
+
+            let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "F");
+            gl.uniform1f(loc.as_ref(), FEED_KILL_PAIRS[i]);
+
+            let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "K");
+            gl.uniform1f(loc.as_ref(), FEED_KILL_PAIRS[i + 1]);
         }
 
         if app.input().get_button_down(Left) || app.input().get_button(Left) && app.input().mouse_delta_position() != (0, 0) {

@@ -4,9 +4,10 @@ precision highp int;
 
 const float D_A = 1.0;
 const float D_B = 0.5;
-const float F = 0.055;
-const float K = 0.062;
 const float DELTA_T = 1.0;
+
+uniform float F; // 0.055
+uniform float K; // 0.062
 
 uniform highp usampler2D u_texture;
 uniform float u_kernel[9];

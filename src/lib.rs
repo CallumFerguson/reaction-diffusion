@@ -1,5 +1,4 @@
 use wasm_bindgen::prelude::*;
-use std::rc::Rc;
 use console_error_panic_hook::hook;
 use crate::components::clear_canvas::ClearCanvas;
 use crate::engine::component::Component;

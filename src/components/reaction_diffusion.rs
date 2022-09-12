@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use glam::{Mat4, Quat, Vec3};
 use rand::Rng;
 use web_sys::{WebGl2RenderingContext, WebGlFramebuffer, WebGlProgram, WebGlTexture, WebGlVertexArrayObject};
@@ -33,7 +33,7 @@ pub struct ReactionDiffusion {
     width: i32,
     height: i32,
     last_mouse_position: (i32, i32),
-    reaction_diffusion_ui: Option<Rc<RefCell<ReactionDiffusionUI>>>,
+    reaction_diffusion_ui: Option<Weak<RefCell<ReactionDiffusionUI>>>,
     current_feed_kill_pair_i: usize,
     last_screen_size: (i32, i32),
 }
@@ -230,11 +230,14 @@ impl Component for ReactionDiffusion {
         }
         self.last_screen_size = app.screen().size();
 
-        if self.reaction_diffusion_ui.as_ref().unwrap().borrow().clear_button() {
+        let reaction_diffusion_ui = self.reaction_diffusion_ui.as_ref().unwrap().upgrade().unwrap();
+        let reaction_diffusion_ui = reaction_diffusion_ui.borrow();
+
+        if reaction_diffusion_ui.clear_button() {
             self.clear(gl);
         }
 
-        if self.reaction_diffusion_ui.as_ref().unwrap().borrow().random_preset_button() {
+        if reaction_diffusion_ui.random_preset_button() {
             gl.use_program(Some(&self.reaction_diffusion));
 
             let mut i = self.current_feed_kill_pair_i;
@@ -244,23 +247,23 @@ impl Component for ReactionDiffusion {
 
             let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "F");
             gl.uniform1f(loc.as_ref(), FEED_KILL_PAIRS[i]);
-            self.reaction_diffusion_ui.as_ref().unwrap().borrow().set_feed_slider_value(FEED_KILL_PAIRS[i] as f64);
+            reaction_diffusion_ui.set_feed_slider_value(FEED_KILL_PAIRS[i] as f64);
 
             let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "K");
             gl.uniform1f(loc.as_ref(), FEED_KILL_PAIRS[i + 1]);
-            self.reaction_diffusion_ui.as_ref().unwrap().borrow().set_kill_slider_value(FEED_KILL_PAIRS[i + 1] as f64);
+            reaction_diffusion_ui.set_kill_slider_value(FEED_KILL_PAIRS[i + 1] as f64);
         }
 
-        if self.reaction_diffusion_ui.as_ref().unwrap().borrow().feed_slider_value_changed() {
+        if reaction_diffusion_ui.feed_slider_value_changed() {
             gl.use_program(Some(&self.reaction_diffusion));
             let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "F");
-            gl.uniform1f(loc.as_ref(), self.reaction_diffusion_ui.as_ref().unwrap().borrow().feed_slider_value() as f32);
+            gl.uniform1f(loc.as_ref(), reaction_diffusion_ui.feed_slider_value() as f32);
         }
 
-        if self.reaction_diffusion_ui.as_ref().unwrap().borrow().kill_slider_value_changed() {
+        if reaction_diffusion_ui.kill_slider_value_changed() {
             gl.use_program(Some(&self.reaction_diffusion));
             let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "K");
-            gl.uniform1f(loc.as_ref(), self.reaction_diffusion_ui.as_ref().unwrap().borrow().kill_slider_value() as f32);
+            gl.uniform1f(loc.as_ref(), reaction_diffusion_ui.kill_slider_value() as f32);
         }
 
         if app.input().get_button_down(Left) || app.input().get_button(Left) && app.input().mouse_delta_position() != (0, 0) {

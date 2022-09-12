@@ -12,6 +12,8 @@ const SIMULATION_SCALE: f32 = 1.5;
 
 const FEED_START: f32 = 0.055;
 const KILL_START: f32 = 0.062;
+
+// presets from: https://pmneila.github.io/jsexp/grayscott/
 const FEED_KILL_PAIRS: &'static [f32] = &[0.055, 0.062, 0.03, 0.062, 0.025, 0.06, 0.078, 0.061, 0.039, 0.058, 0.026, 0.051, 0.014, 0.054, 0.018, 0.051, 0.014, 0.045, 0.062, 0.061];
 
 pub struct ReactionDiffusion {

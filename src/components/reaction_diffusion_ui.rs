@@ -9,21 +9,32 @@ use web_sys::HtmlElement;
 
 pub struct ReactionDiffusionUI {
     callbacks: Vec<Closure<dyn FnMut()>>,
-    on_click_clear_functions: Rc<RefCell<Vec<Box<dyn FnMut()>>>>,
+    clear_button: Rc<RefCell<bool>>,
+    random_preset_button: Rc<RefCell<bool>>,
 }
 
 impl ReactionDiffusionUI {
     pub fn new() -> Self {
         return Self {
             callbacks: Vec::new(),
-            on_click_clear_functions: Rc::new(RefCell::new(Vec::new())),
+            // on_click_clear_functions: Rc::new(RefCell::new(Vec::new())),
+            clear_button: Rc::new(RefCell::new(false)),
+            random_preset_button: Rc::new(RefCell::new(false)),
         };
     }
 }
 
 impl ReactionDiffusionUI {
-    pub fn add_clear_click_callback(&self, callback: impl FnMut() + 'static) {
-        self.on_click_clear_functions.borrow_mut().push(Box::new(callback));
+    // pub fn add_clear_click_callback(&self, callback: impl FnMut() + 'static) {
+    //     self.on_click_clear_functions.borrow_mut().push(Box::new(callback));
+    // }
+
+    pub fn clear_button(&self) -> bool {
+        return *self.clear_button.borrow();
+    }
+
+    pub fn random_preset_button(&self) -> bool {
+        return *self.random_preset_button.borrow();
     }
 }
 
@@ -94,11 +105,9 @@ impl Component for ReactionDiffusionUI {
         button.style().set_property("margin", "5px").unwrap();
         controls.append_child(&button).unwrap();
 
-        let on_click_clear_functions = Rc::clone(&self.on_click_clear_functions);
+        let clear_button = Rc::clone(&self.clear_button);
         let callback = Closure::<dyn FnMut()>::new(move || {
-            for function in on_click_clear_functions.borrow_mut().iter_mut() {
-                function();
-            }
+            *clear_button.borrow_mut() = true;
         });
         button.add_event_listener_with_callback("click", callback.as_ref().unchecked_ref()).unwrap();
         self.callbacks.push(callback);
@@ -110,10 +119,16 @@ impl Component for ReactionDiffusionUI {
         button.style().set_property("margin", "5px").unwrap();
         controls.append_child(&button).unwrap();
 
+        let random_preset_button = Rc::clone(&self.random_preset_button);
         let callback = Closure::<dyn FnMut()>::new(move || {
-            console_log!("random preset");
+            *random_preset_button.borrow_mut() = true;
         });
         button.add_event_listener_with_callback("click", callback.as_ref().unchecked_ref()).unwrap();
         self.callbacks.push(callback);
+    }
+
+    fn on_late_update(&mut self, app: &App) {
+        *self.clear_button.borrow_mut() = false;
+        *self.random_preset_button.borrow_mut() = false;
     }
 }

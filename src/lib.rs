@@ -36,11 +36,11 @@ pub fn start() -> Result<(), JsValue> {
     let rdui_clone = Rc::clone(&rdui);
     game_manager.add_component(ReactionDiffusion::new(&app, rdui), &app);
 
-    let rd = game_manager.get_component::<ReactionDiffusion>().unwrap();
-    let app_inner = Rc::clone(&app_ref);
-    rdui_clone.borrow().add_clear_click_callback(move || {
-        rd.borrow().clear(app_inner.borrow().gl());
-    });
+    // let rd = game_manager.get_component::<ReactionDiffusion>().unwrap();
+    // let app_inner = Rc::clone(&app_ref);
+    // rdui_clone.borrow().add_clear_click_callback(move || {
+    //     rd.borrow().clear(app_inner.borrow().gl());
+    // });
 
     app.add_game_object(game_manager);
 

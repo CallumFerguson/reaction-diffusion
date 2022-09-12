@@ -148,6 +148,12 @@ impl App {
                         component.borrow_mut().on_render(&app);
                     }
                 }
+
+                for game_object in app.game_objects.borrow_mut().iter_mut() {
+                    for component in game_object.components_iter_mut() {
+                        component.borrow_mut().on_late_update(&app);
+                    }
+                }
             }
 
             {

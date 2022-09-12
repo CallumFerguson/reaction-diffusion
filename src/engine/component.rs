@@ -7,4 +7,5 @@ pub trait Component {
     fn on_update(&mut self, app: &App) {}
     fn on_pre_render(&mut self, app: &App) {}
     fn on_render(&mut self, app: &App) {}
+    fn on_late_update(&mut self, app: &App) {}
 }

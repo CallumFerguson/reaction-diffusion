@@ -6,19 +6,22 @@ use web_sys::{Document, HtmlCanvasElement, HtmlElement, WebGl2RenderingContext};
 use crate::{ClearCanvas, Component, GameObject, ReactionDiffusionUI};
 use crate::engine::app::input::Input;
 use crate::engine::app::screen::Screen;
+use crate::engine::app::time::Time;
 
 pub mod input;
 pub mod screen;
+pub mod time;
 
 pub struct App {
     canvas: HtmlCanvasElement,
     gl: Option<WebGl2RenderingContext>,
     game_objects: RefCell<Vec<GameObject>>,
     game_objects_to_be_added: RefCell<Vec<GameObject>>,
-    input: Input,
-    screen: Screen,
     document: Document,
     body: HtmlElement,
+    input: Input,
+    screen: Screen,
+    time: Time,
 }
 
 impl App {
@@ -42,22 +45,18 @@ impl App {
             gl: None,
             game_objects: RefCell::new(Vec::new()),
             game_objects_to_be_added: RefCell::new(Vec::new()),
-            input: Input::new(),
-            screen: Screen::new((width, height)),
             document,
             body,
+            input: Input::new(),
+            screen: Screen::new((width, height)),
+            time: Time::new(),
         };
         let app = Rc::new(RefCell::new(app));
 
-        let resized = Rc::new(RefCell::new(false));
-
         let window_outer = Rc::clone(&window);
-        let resized_outer = Rc::clone(&resized);
         let app_outer = Rc::clone(&app);
         let event_closure = Closure::<dyn FnMut()>::new(move || {
             let mut app = app.borrow_mut();
-
-            *resized.borrow_mut() = true;
 
             let width = window.inner_width().unwrap().as_f64().unwrap() as i32;
             let height = window.inner_height().unwrap().as_f64().unwrap() as i32;
@@ -68,7 +67,6 @@ impl App {
             canvas.set_attribute("height", &height.to_string()).unwrap();
         });
         let window = window_outer;
-        let resized = resized_outer;
         let app = app_outer;
         window.add_event_listener_with_callback("resize", event_closure.as_ref().unchecked_ref()).unwrap();
         event_closure.forget();
@@ -103,16 +101,21 @@ impl App {
         let app_outer = Rc::clone(&app);
         *animation_loop_closure_outer.borrow_mut() = Some(Closure::<dyn FnMut(_)>::new(move |now: f64| {
             {
-                let app = app.borrow();
-
                 let now = now * 0.001;
                 if start_time < 0.0 {
                     start_time = now;
                 }
                 let unscaled_time = now - start_time;
-                let _delta_time = unscaled_time - last_unscaled_time;
+                let delta_time = unscaled_time - last_unscaled_time;
                 last_unscaled_time = unscaled_time;
-                // console_log!("{}", 1.0 / delta_time);
+
+                {
+                    let mut app_mut = app.borrow_mut();
+                    app_mut.time.set_delta_time(delta_time as f32);
+                    app_mut.time.set_unscaled_time(unscaled_time as f32);
+                }
+
+                let app = app.borrow();
 
                 {
                     let mut game_objects_to_be_added = app.game_objects_to_be_added.borrow_mut();
@@ -125,7 +128,8 @@ impl App {
                 let game_objects_len = app.game_objects.borrow().len();
 
                 for i in 0..game_objects_len {
-                    let components = app.game_objects.borrow_mut()[i].components();;
+                    let components = app.game_objects.borrow_mut()[i].components();
+                    ;
                     for component in components.borrow_mut().iter_mut() {
                         let game_object = &mut app.game_objects.borrow_mut()[i];
                         if !component.had_first_update() {
@@ -136,7 +140,8 @@ impl App {
                 }
 
                 for i in 0..game_objects_len {
-                    let components = app.game_objects.borrow_mut()[i].components();;
+                    let components = app.game_objects.borrow_mut()[i].components();
+                    ;
                     for component in components.borrow_mut().iter_mut() {
                         let game_object = &mut app.game_objects.borrow_mut()[i];
                         component.component().borrow_mut().on_update(game_object, &app);
@@ -144,7 +149,8 @@ impl App {
                 }
 
                 for i in 0..game_objects_len {
-                    let components = app.game_objects.borrow_mut()[i].components();;
+                    let components = app.game_objects.borrow_mut()[i].components();
+                    ;
                     for component in components.borrow_mut().iter_mut() {
                         let game_object = &mut app.game_objects.borrow_mut()[i];
                         component.component().borrow_mut().on_pre_render(game_object, &app);
@@ -152,7 +158,8 @@ impl App {
                 }
 
                 for i in 0..game_objects_len {
-                    let components = app.game_objects.borrow_mut()[i].components();;
+                    let components = app.game_objects.borrow_mut()[i].components();
+                    ;
                     for component in components.borrow_mut().iter_mut() {
                         let game_object = &mut app.game_objects.borrow_mut()[i];
                         component.component().borrow_mut().on_render(game_object, &app);
@@ -160,7 +167,8 @@ impl App {
                 }
 
                 for i in 0..game_objects_len {
-                    let components = app.game_objects.borrow_mut()[i].components();;
+                    let components = app.game_objects.borrow_mut()[i].components();
+                    ;
                     for component in components.borrow_mut().iter_mut() {
                         let game_object = &mut app.game_objects.borrow_mut()[i];
                         component.component().borrow_mut().on_late_update(game_object, &app);
@@ -193,13 +201,9 @@ impl App {
         self.game_objects_to_be_added.borrow_mut().push(game_object);
     }
 
-    pub fn input(&self) -> &Input {
-        return &self.input;
-    }
-
-    pub fn screen(&self) -> &Screen {
-        return &self.screen;
-    }
+    pub fn input(&self) -> &Input { &self.input }
+    pub fn screen(&self) -> &Screen { &self.screen }
+    pub fn time(&self) -> &Time { &self.time }
 
     pub fn canvas(&self) -> &HtmlCanvasElement {
         return &self.canvas;

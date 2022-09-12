@@ -4,10 +4,12 @@ use std::rc::Rc;
 use std::slice::IterMut;
 use crate::Component;
 use crate::engine::app::App;
+use crate::engine::component_holder::ComponentHolder;
 
 pub struct GameObject {
-    components: Rc<RefCell<Vec<Box<Rc<RefCell<dyn Component>>>>>>,
+    components: Rc<RefCell<Vec<ComponentHolder>>>,
     components_as_any: Vec<Box<dyn Any>>,
+    had_first_update: bool,
 }
 
 impl GameObject {
@@ -15,6 +17,7 @@ impl GameObject {
         return Self {
             components: Rc::new(RefCell::new(Vec::new())),
             components_as_any: Vec::new(),
+            had_first_update: false,
         };
     }
 }
@@ -27,7 +30,7 @@ impl GameObject {
         let component_rc_2 = Rc::clone(&component_rc_1);
 
         self.components_as_any.push(Box::new(component_rc_1));
-        self.components.borrow_mut().push(Box::new(component_rc_2));
+        self.components.borrow_mut().push(ComponentHolder::new(Box::new(component_rc_2)));
     }
 
     pub fn get_component<T: 'static>(&self) -> Option<Rc<RefCell<T>>> {
@@ -47,7 +50,7 @@ impl GameObject {
     //     return self.components.borrow_mut().iter_mut();
     // }
 
-    pub fn components(&self) -> Rc<RefCell<Vec<Box<Rc<RefCell<dyn Component>>>>>> {
+    pub fn components(&self) -> Rc<RefCell<Vec<ComponentHolder>>> {
         return Rc::clone(&self.components);
     }
 }

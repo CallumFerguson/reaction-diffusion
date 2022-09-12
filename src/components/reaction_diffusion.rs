@@ -82,8 +82,6 @@ impl ReactionDiffusion {
 
 impl Component for ReactionDiffusion {
     fn on_add_to_game_object(&mut self, game_object: &mut GameObject, app: &App) {
-        self.reaction_diffusion_ui = game_object.get_component::<ReactionDiffusionUI>();
-
         let gl = app.gl();
 
         let vertices = [-0.5, 0.5, 0.0, 0.5, 0.5, 0.0, 0.5, -0.5, 0.0, -0.5, -0.5, 0.0];
@@ -156,6 +154,10 @@ impl Component for ReactionDiffusion {
         ).unwrap();
 
         self.fbo = Some(Box::new(gl.create_framebuffer().unwrap()));
+    }
+
+    fn on_first_update(&mut self, game_object: &mut GameObject, app: &App) {
+        self.reaction_diffusion_ui = game_object.get_component::<ReactionDiffusionUI>();
     }
 
     fn on_resize(&mut self, game_object: &mut GameObject, app: &App) {

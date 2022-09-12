@@ -124,13 +124,24 @@ impl App {
 
                 let game_objects_len = app.game_objects.borrow().len();
 
+                for i in 0..game_objects_len {
+                    let components = app.game_objects.borrow_mut()[i].components();;
+                    for component in components.borrow_mut().iter_mut() {
+                        let game_object = &mut app.game_objects.borrow_mut()[i];
+                        if !component.had_first_update() {
+                            component.component().borrow_mut().on_first_update(game_object, &app);
+                            component.set_had_first_update();
+                        }
+                    }
+                }
+
                 if *resized.borrow() {
                     *resized.borrow_mut() = false;
                     for i in 0..game_objects_len {
                         let components = app.game_objects.borrow_mut()[i].components();;
                         for component in components.borrow_mut().iter_mut() {
                             let game_object = &mut app.game_objects.borrow_mut()[i];
-                            component.borrow_mut().on_resize(game_object, &app);
+                            component.component().borrow_mut().on_resize(game_object, &app);
                         }
                     }
                 }
@@ -139,7 +150,7 @@ impl App {
                     let components = app.game_objects.borrow_mut()[i].components();;
                     for component in components.borrow_mut().iter_mut() {
                         let game_object = &mut app.game_objects.borrow_mut()[i];
-                        component.borrow_mut().on_update(game_object, &app);
+                        component.component().borrow_mut().on_update(game_object, &app);
                     }
                 }
 
@@ -147,7 +158,7 @@ impl App {
                     let components = app.game_objects.borrow_mut()[i].components();;
                     for component in components.borrow_mut().iter_mut() {
                         let game_object = &mut app.game_objects.borrow_mut()[i];
-                        component.borrow_mut().on_pre_render(game_object, &app);
+                        component.component().borrow_mut().on_pre_render(game_object, &app);
                     }
                 }
 
@@ -155,7 +166,7 @@ impl App {
                     let components = app.game_objects.borrow_mut()[i].components();;
                     for component in components.borrow_mut().iter_mut() {
                         let game_object = &mut app.game_objects.borrow_mut()[i];
-                        component.borrow_mut().on_render(game_object, &app);
+                        component.component().borrow_mut().on_render(game_object, &app);
                     }
                 }
 
@@ -163,7 +174,7 @@ impl App {
                     let components = app.game_objects.borrow_mut()[i].components();;
                     for component in components.borrow_mut().iter_mut() {
                         let game_object = &mut app.game_objects.borrow_mut()[i];
-                        component.borrow_mut().on_late_update(game_object, &app);
+                        component.component().borrow_mut().on_late_update(game_object, &app);
                     }
                 }
             }

@@ -135,17 +135,6 @@ impl App {
                     }
                 }
 
-                if *resized.borrow() {
-                    *resized.borrow_mut() = false;
-                    for i in 0..game_objects_len {
-                        let components = app.game_objects.borrow_mut()[i].components();;
-                        for component in components.borrow_mut().iter_mut() {
-                            let game_object = &mut app.game_objects.borrow_mut()[i];
-                            component.component().borrow_mut().on_resize(game_object, &app);
-                        }
-                    }
-                }
-
                 for i in 0..game_objects_len {
                     let components = app.game_objects.borrow_mut()[i].components();;
                     for component in components.borrow_mut().iter_mut() {

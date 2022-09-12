@@ -35,6 +35,7 @@ pub struct ReactionDiffusion {
     last_mouse_position: (i32, i32),
     reaction_diffusion_ui: Option<Rc<RefCell<ReactionDiffusionUI>>>,
     current_feed_kill_pair_i: usize,
+    last_screen_size: (i32, i32),
 }
 
 impl ReactionDiffusion {
@@ -63,12 +64,13 @@ impl ReactionDiffusion {
             last_mouse_position: (-1, -1),
             reaction_diffusion_ui: None,
             current_feed_kill_pair_i: 0,
+            last_screen_size: (-1, -1),
         };
     }
 }
 
 impl ReactionDiffusion {
-    pub fn clear(&self, gl: &WebGl2RenderingContext) {
+    fn clear(&self, gl: &WebGl2RenderingContext) {
         gl.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, Some(self.fbo.as_ref().unwrap().as_ref()));
         gl.viewport(0, 0, self.width, self.height);
         gl.framebuffer_texture_2d(WebGl2RenderingContext::FRAMEBUFFER, WebGl2RenderingContext::COLOR_ATTACHMENT0, WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()), 0);
@@ -77,6 +79,63 @@ impl ReactionDiffusion {
         gl.use_program(Some(&self.basic_color_on_rg16_ui));
         gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.output_texture.as_ref().unwrap().as_ref()));
         gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
+    }
+
+    fn resize(&mut self, gl: &WebGl2RenderingContext, width: i32, height: i32) {
+        self.width = (width as f32 / SIMULATION_SCALE).round() as i32;
+        self.height = (height as f32 / SIMULATION_SCALE).round() as i32;
+
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.output_texture.as_ref().unwrap().as_ref()));
+        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
+            WebGl2RenderingContext::TEXTURE_2D,
+            0,
+            WebGl2RenderingContext::RG16UI as i32,
+            self.width,
+            self.height,
+            0,
+            WebGl2RenderingContext::RG_INTEGER,
+            WebGl2RenderingContext::UNSIGNED_SHORT,
+            None,
+        ).unwrap();
+
+        gl.bind_vertex_array(self.render_texture_vao.as_ref());
+        gl.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, Some(self.fbo.as_ref().unwrap().as_ref()));
+        gl.viewport(0, 0, self.width, self.height);
+        gl.use_program(Some(&self.basic_rg16ui));
+
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
+
+        gl.framebuffer_texture_2d(WebGl2RenderingContext::FRAMEBUFFER, WebGl2RenderingContext::COLOR_ATTACHMENT0, WebGl2RenderingContext::TEXTURE_2D, Some(self.output_texture.as_ref().unwrap().as_ref()), 0);
+
+        gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
+
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
+        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
+            WebGl2RenderingContext::TEXTURE_2D,
+            0,
+            WebGl2RenderingContext::RG16UI as i32,
+            self.width,
+            self.height,
+            0,
+            WebGl2RenderingContext::RG_INTEGER,
+            WebGl2RenderingContext::UNSIGNED_SHORT,
+            None,
+        ).unwrap();
+
+        std::mem::swap(&mut self.input_texture, &mut self.output_texture);
+
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.render_texture.as_ref().unwrap().as_ref()));
+        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
+            WebGl2RenderingContext::TEXTURE_2D,
+            0,
+            WebGl2RenderingContext::RGBA as i32,
+            self.width,
+            self.height,
+            0,
+            WebGl2RenderingContext::RGBA,
+            WebGl2RenderingContext::UNSIGNED_BYTE,
+            None,
+        ).unwrap();
     }
 }
 
@@ -160,69 +219,16 @@ impl Component for ReactionDiffusion {
         self.reaction_diffusion_ui = game_object.get_component::<ReactionDiffusionUI>();
     }
 
-    fn on_resize(&mut self, game_object: &mut GameObject, app: &App) {
-        let gl = app.gl();
-
-        let width = app.screen().width();
-        let height = app.screen().height();
-        self.width = (width as f32 / SIMULATION_SCALE).round() as i32;
-        self.height = (height as f32 / SIMULATION_SCALE).round() as i32;
-
-        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.output_texture.as_ref().unwrap().as_ref()));
-        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
-            WebGl2RenderingContext::TEXTURE_2D,
-            0,
-            WebGl2RenderingContext::RG16UI as i32,
-            self.width,
-            self.height,
-            0,
-            WebGl2RenderingContext::RG_INTEGER,
-            WebGl2RenderingContext::UNSIGNED_SHORT,
-            None,
-        ).unwrap();
-
-        gl.bind_vertex_array(self.render_texture_vao.as_ref());
-        gl.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, Some(self.fbo.as_ref().unwrap().as_ref()));
-        gl.viewport(0, 0, self.width, self.height);
-        gl.use_program(Some(&self.basic_rg16ui));
-
-        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
-
-        gl.framebuffer_texture_2d(WebGl2RenderingContext::FRAMEBUFFER, WebGl2RenderingContext::COLOR_ATTACHMENT0, WebGl2RenderingContext::TEXTURE_2D, Some(self.output_texture.as_ref().unwrap().as_ref()), 0);
-
-        gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
-
-        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.input_texture.as_ref().unwrap().as_ref()));
-        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
-            WebGl2RenderingContext::TEXTURE_2D,
-            0,
-            WebGl2RenderingContext::RG16UI as i32,
-            self.width,
-            self.height,
-            0,
-            WebGl2RenderingContext::RG_INTEGER,
-            WebGl2RenderingContext::UNSIGNED_SHORT,
-            None,
-        ).unwrap();
-
-        std::mem::swap(&mut self.input_texture, &mut self.output_texture);
-
-        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(self.render_texture.as_ref().unwrap().as_ref()));
-        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
-            WebGl2RenderingContext::TEXTURE_2D,
-            0,
-            WebGl2RenderingContext::RGBA as i32,
-            self.width,
-            self.height,
-            0,
-            WebGl2RenderingContext::RGBA,
-            WebGl2RenderingContext::UNSIGNED_BYTE,
-            None,
-        ).unwrap();
-    }
-
     fn on_update(&mut self, game_object: &mut GameObject, app: &App) {
         let gl = app.gl();
+
+        if self.last_screen_size == (-1, -1) {
+            self.last_screen_size = app.screen().size();
+        }
+        if app.screen().size() != self.last_screen_size {
+            self.resize(gl, app.screen().width(), app.screen().height());
+        }
+        self.last_screen_size = app.screen().size();
 
         if self.reaction_diffusion_ui.as_ref().unwrap().borrow().clear_button() {
             self.clear(gl);

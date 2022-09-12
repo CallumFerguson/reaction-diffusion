@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::Component;
+use crate::{Component, GameObject};
 use crate::engine::app::App;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -59,7 +59,7 @@ impl ReactionDiffusionUI {
 }
 
 impl Component for ReactionDiffusionUI {
-    fn on_add_to_game_object(&mut self, app: &App) {
+    fn on_add_to_game_object(&mut self, game_object: &mut GameObject, app: &App) {
         let ui_div_parent = app.document().create_element("div").unwrap().dyn_into::<HtmlElement>().unwrap();
         let style = ui_div_parent.style();
         style.set_property("width", "100%").unwrap();
@@ -171,7 +171,7 @@ impl Component for ReactionDiffusionUI {
         self.callbacks.push(callback);
     }
 
-    fn on_late_update(&mut self, app: &App) {
+    fn on_late_update(&mut self, game_object: &mut GameObject, app: &App) {
         *self.last_feed_slider_value.borrow_mut() = *self.feed_slider_value.borrow_mut();
         *self.last_kill_slider_value.borrow_mut() = *self.kill_slider_value.borrow_mut();
         *self.clear_button.borrow_mut() = false;

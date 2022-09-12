@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::rc::Rc;
 use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlVertexArrayObject};
-use crate::{Component};
+use crate::{Component, GameObject};
 use crate::engine::app::App;
 
 pub struct Square {
@@ -21,7 +21,7 @@ impl Square {
 }
 
 impl Component for Square {
-    fn on_add_to_game_object(&mut self, app: &App) {
+    fn on_add_to_game_object(&mut self, game_object: &mut GameObject, app: &App) {
         let gl = app.gl();
 
         self.vao = gl.create_vertex_array();
@@ -63,7 +63,7 @@ impl Component for Square {
         }
     }
 
-    fn on_render(&mut self, app: &App) {
+    fn on_render(&mut self, game_object: &mut GameObject, app: &App) {
         let gl = app.gl();
 
         gl.bind_vertex_array(self.vao.as_ref());

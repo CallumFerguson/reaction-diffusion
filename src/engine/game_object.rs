@@ -1,5 +1,4 @@
 use std::any::Any;
-use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::slice::IterMut;
@@ -7,14 +6,14 @@ use crate::Component;
 use crate::engine::app::App;
 
 pub struct GameObject {
-    components: Vec<Box<Rc<RefCell<dyn Component>>>>,
+    components: Rc<RefCell<Vec<Box<Rc<RefCell<dyn Component>>>>>>,
     components_as_any: Vec<Box<dyn Any>>,
 }
 
 impl GameObject {
     pub fn new() -> Self {
         return Self {
-            components: Vec::new(),
+            components: Rc::new(RefCell::new(Vec::new())),
             components_as_any: Vec::new(),
         };
     }
@@ -22,16 +21,16 @@ impl GameObject {
 
 impl GameObject {
     pub fn add_component(&mut self, mut component: impl Component + 'static, app: &App) {
-        component.on_add_to_game_object(&app);
+        component.on_add_to_game_object(self, &app);
 
         let component_rc_1 = Rc::new(RefCell::new(component));
         let component_rc_2 = Rc::clone(&component_rc_1);
 
         self.components_as_any.push(Box::new(component_rc_1));
-        self.components.push(Box::new(component_rc_2));
+        self.components.borrow_mut().push(Box::new(component_rc_2));
     }
 
-    pub fn get_component<T: 'static>(&mut self) -> Option<Rc<RefCell<T>>> {
+    pub fn get_component<T: 'static>(&self) -> Option<Rc<RefCell<T>>> {
         for component in self.components_as_any.iter() {
             if let Some(component) = component.downcast_ref::<Rc<RefCell<T>>>() {
                 return Some(Rc::clone(component));
@@ -44,7 +43,11 @@ impl GameObject {
     //     return &self.components;
     // }
 
-    pub fn components_iter_mut(&mut self) -> IterMut<Box<Rc<RefCell<dyn Component>>>> {
-        return self.components.iter_mut();
+    // pub fn components_iter_mut(&mut self) -> IterMut<Box<Rc<RefCell<dyn Component>>>> {
+    //     return self.components.borrow_mut().iter_mut();
+    // }
+
+    pub fn components(&self) -> Rc<RefCell<Vec<Box<Rc<RefCell<dyn Component>>>>>> {
+        return Rc::clone(&self.components);
     }
 }

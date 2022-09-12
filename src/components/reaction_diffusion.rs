@@ -3,7 +3,7 @@ use std::rc::Rc;
 use glam::{Mat4, Quat, Vec3};
 use rand::Rng;
 use web_sys::{WebGl2RenderingContext, WebGlFramebuffer, WebGlProgram, WebGlTexture, WebGlVertexArrayObject};
-use crate::{Component, create_shader_program, ReactionDiffusionUI};
+use crate::{Component, create_shader_program, GameObject, ReactionDiffusionUI};
 use crate::engine::app::App;
 use crate::engine::app::input::Button::Left;
 use crate::utils::{distance, lerp};
@@ -33,12 +33,12 @@ pub struct ReactionDiffusion {
     width: i32,
     height: i32,
     last_mouse_position: (i32, i32),
-    reaction_diffusion_ui: Rc<RefCell<ReactionDiffusionUI>>,
+    reaction_diffusion_ui: Option<Rc<RefCell<ReactionDiffusionUI>>>,
     current_feed_kill_pair_i: usize,
 }
 
 impl ReactionDiffusion {
-    pub fn new(app: &App, reaction_diffusion_ui: Rc<RefCell<ReactionDiffusionUI>>) -> Self {
+    pub fn new(app: &App) -> Self {
         let gl = app.gl();
 
         let width = (app.screen().width() as f32 / SIMULATION_SCALE).round() as i32;
@@ -61,7 +61,7 @@ impl ReactionDiffusion {
             width,
             height,
             last_mouse_position: (-1, -1),
-            reaction_diffusion_ui,
+            reaction_diffusion_ui: None,
             current_feed_kill_pair_i: 0,
         };
     }
@@ -81,7 +81,9 @@ impl ReactionDiffusion {
 }
 
 impl Component for ReactionDiffusion {
-    fn on_add_to_game_object(&mut self, app: &App) {
+    fn on_add_to_game_object(&mut self, game_object: &mut GameObject, app: &App) {
+        self.reaction_diffusion_ui = game_object.get_component::<ReactionDiffusionUI>();
+
         let gl = app.gl();
 
         let vertices = [-0.5, 0.5, 0.0, 0.5, 0.5, 0.0, 0.5, -0.5, 0.0, -0.5, -0.5, 0.0];
@@ -156,7 +158,7 @@ impl Component for ReactionDiffusion {
         self.fbo = Some(Box::new(gl.create_framebuffer().unwrap()));
     }
 
-    fn on_resize(&mut self, app: &App) {
+    fn on_resize(&mut self, game_object: &mut GameObject, app: &App) {
         let gl = app.gl();
 
         let width = app.screen().width();
@@ -217,14 +219,14 @@ impl Component for ReactionDiffusion {
         ).unwrap();
     }
 
-    fn on_update(&mut self, app: &App) {
+    fn on_update(&mut self, game_object: &mut GameObject, app: &App) {
         let gl = app.gl();
 
-        if self.reaction_diffusion_ui.borrow().clear_button() {
+        if self.reaction_diffusion_ui.as_ref().unwrap().borrow().clear_button() {
             self.clear(gl);
         }
 
-        if self.reaction_diffusion_ui.borrow().random_preset_button() {
+        if self.reaction_diffusion_ui.as_ref().unwrap().borrow().random_preset_button() {
             gl.use_program(Some(&self.reaction_diffusion));
 
             let mut i = self.current_feed_kill_pair_i;
@@ -234,23 +236,23 @@ impl Component for ReactionDiffusion {
 
             let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "F");
             gl.uniform1f(loc.as_ref(), FEED_KILL_PAIRS[i]);
-            self.reaction_diffusion_ui.borrow().set_feed_slider_value(FEED_KILL_PAIRS[i] as f64);
+            self.reaction_diffusion_ui.as_ref().unwrap().borrow().set_feed_slider_value(FEED_KILL_PAIRS[i] as f64);
 
             let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "K");
             gl.uniform1f(loc.as_ref(), FEED_KILL_PAIRS[i + 1]);
-            self.reaction_diffusion_ui.borrow().set_kill_slider_value(FEED_KILL_PAIRS[i + 1] as f64);
+            self.reaction_diffusion_ui.as_ref().unwrap().borrow().set_kill_slider_value(FEED_KILL_PAIRS[i + 1] as f64);
         }
 
-        if self.reaction_diffusion_ui.borrow().feed_slider_value_changed() {
+        if self.reaction_diffusion_ui.as_ref().unwrap().borrow().feed_slider_value_changed() {
             gl.use_program(Some(&self.reaction_diffusion));
             let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "F");
-            gl.uniform1f(loc.as_ref(), self.reaction_diffusion_ui.borrow().feed_slider_value() as f32);
+            gl.uniform1f(loc.as_ref(), self.reaction_diffusion_ui.as_ref().unwrap().borrow().feed_slider_value() as f32);
         }
 
-        if self.reaction_diffusion_ui.borrow().kill_slider_value_changed() {
+        if self.reaction_diffusion_ui.as_ref().unwrap().borrow().kill_slider_value_changed() {
             gl.use_program(Some(&self.reaction_diffusion));
             let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "K");
-            gl.uniform1f(loc.as_ref(), self.reaction_diffusion_ui.borrow().kill_slider_value() as f32);
+            gl.uniform1f(loc.as_ref(), self.reaction_diffusion_ui.as_ref().unwrap().borrow().kill_slider_value() as f32);
         }
 
         if app.input().get_button_down(Left) || app.input().get_button(Left) && app.input().mouse_delta_position() != (0, 0) {
@@ -326,7 +328,7 @@ impl Component for ReactionDiffusion {
         gl.viewport(0, 0, app.screen().width(), app.screen().height());
     }
 
-    fn on_render(&mut self, app: &App) {
+    fn on_render(&mut self, game_object: &mut GameObject, app: &App) {
         let gl = app.gl();
 
         gl.bind_vertex_array(self.render_texture_vao.as_ref());

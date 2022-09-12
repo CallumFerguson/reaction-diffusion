@@ -3,7 +3,7 @@ use std::rc::Rc;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::Closure;
 use web_sys::{Document, HtmlCanvasElement, HtmlElement, WebGl2RenderingContext};
-use crate::{ClearCanvas, Component, GameObject};
+use crate::{ClearCanvas, Component, GameObject, ReactionDiffusionUI};
 use crate::engine::app::input::Input;
 use crate::engine::app::screen::Screen;
 
@@ -122,36 +122,48 @@ impl App {
                     }
                 }
 
+                let game_objects_len = app.game_objects.borrow().len();
+
                 if *resized.borrow() {
                     *resized.borrow_mut() = false;
-                    for game_object in app.game_objects.borrow_mut().iter_mut() {
-                        for component in game_object.components_iter_mut() {
-                            component.borrow_mut().on_resize(&app);
+                    for i in 0..game_objects_len {
+                        let components = app.game_objects.borrow_mut()[i].components();;
+                        for component in components.borrow_mut().iter_mut() {
+                            let game_object = &mut app.game_objects.borrow_mut()[i];
+                            component.borrow_mut().on_resize(game_object, &app);
                         }
                     }
                 }
 
-                for game_object in app.game_objects.borrow_mut().iter_mut() {
-                    for component in game_object.components_iter_mut() {
-                        component.borrow_mut().on_update(&app);
+                for i in 0..game_objects_len {
+                    let components = app.game_objects.borrow_mut()[i].components();;
+                    for component in components.borrow_mut().iter_mut() {
+                        let game_object = &mut app.game_objects.borrow_mut()[i];
+                        component.borrow_mut().on_update(game_object, &app);
                     }
                 }
 
-                for game_object in app.game_objects.borrow_mut().iter_mut() {
-                    for component in game_object.components_iter_mut() {
-                        component.borrow_mut().on_pre_render(&app);
+                for i in 0..game_objects_len {
+                    let components = app.game_objects.borrow_mut()[i].components();;
+                    for component in components.borrow_mut().iter_mut() {
+                        let game_object = &mut app.game_objects.borrow_mut()[i];
+                        component.borrow_mut().on_pre_render(game_object, &app);
                     }
                 }
 
-                for game_object in app.game_objects.borrow_mut().iter_mut() {
-                    for component in game_object.components_iter_mut() {
-                        component.borrow_mut().on_render(&app);
+                for i in 0..game_objects_len {
+                    let components = app.game_objects.borrow_mut()[i].components();;
+                    for component in components.borrow_mut().iter_mut() {
+                        let game_object = &mut app.game_objects.borrow_mut()[i];
+                        component.borrow_mut().on_render(game_object, &app);
                     }
                 }
 
-                for game_object in app.game_objects.borrow_mut().iter_mut() {
-                    for component in game_object.components_iter_mut() {
-                        component.borrow_mut().on_late_update(&app);
+                for i in 0..game_objects_len {
+                    let components = app.game_objects.borrow_mut()[i].components();;
+                    for component in components.borrow_mut().iter_mut() {
+                        let game_object = &mut app.game_objects.borrow_mut()[i];
+                        component.borrow_mut().on_late_update(game_object, &app);
                     }
                 }
             }

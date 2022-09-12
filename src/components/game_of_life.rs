@@ -2,7 +2,7 @@ use std::any::Any;
 use std::collections::HashSet;
 use std::rc::Rc;
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlVertexArrayObject};
-use crate::Component;
+use crate::{Component, GameObject};
 use crate::engine::app::App;
 
 const BUFFER_SIZE: i32 = 1024 * 1024 * 100; // 100Mib
@@ -34,7 +34,7 @@ impl GameOfLife {
 }
 
 impl Component for GameOfLife {
-    fn on_add_to_game_object(&mut self, app: &App) {
+    fn on_add_to_game_object(&mut self, game_object: &mut GameObject, app: &App) {
         let gl = app.gl();
 
         self.vao = Rc::new(Some(gl
@@ -73,7 +73,7 @@ impl Component for GameOfLife {
         gl.enable_vertex_attrib_array(position_attribute_location as u32);
     }
 
-    fn on_update(&mut self, app: &App) {
+    fn on_update(&mut self, game_object: &mut GameObject, app: &App) {
         let gl = app.gl();
 
         gl.bind_vertex_array(self.vao.as_ref().as_ref());
@@ -107,7 +107,7 @@ impl Component for GameOfLife {
         }
     }
 
-    fn on_render(&mut self, app: &App) {
+    fn on_render(&mut self, game_object: &mut GameObject, app: &App) {
         let gl = app.gl();
 
         gl.bind_vertex_array(self.vao.as_ref().as_ref());

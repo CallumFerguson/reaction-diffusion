@@ -24,23 +24,11 @@ pub fn start() -> Result<(), JsValue> {
     app_ref.borrow_mut().init_gl();
     let app = app_ref.borrow();
 
-    let gl = app.gl();
-
     let mut game_manager = GameObject::new();
 
     game_manager.add_component(ClearCanvas::new(), &app);
-
     game_manager.add_component(ReactionDiffusionUI::new(), &app);
-
-    let rdui = game_manager.get_component::<ReactionDiffusionUI>().unwrap();
-    let rdui_clone = Rc::clone(&rdui);
-    game_manager.add_component(ReactionDiffusion::new(&app, rdui), &app);
-
-    // let rd = game_manager.get_component::<ReactionDiffusion>().unwrap();
-    // let app_inner = Rc::clone(&app_ref);
-    // rdui_clone.borrow().add_clear_click_callback(move || {
-    //     rd.borrow().clear(app_inner.borrow().gl());
-    // });
+    game_manager.add_component(ReactionDiffusion::new(&app), &app);
 
     app.add_game_object(game_manager);
 

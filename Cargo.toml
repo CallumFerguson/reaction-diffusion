@@ -36,4 +36,5 @@ features = [
     'WebGlTexture',
     'WebGlFramebuffer',
     'CssStyleDeclaration',
+    'HtmlInputElement',
 ]

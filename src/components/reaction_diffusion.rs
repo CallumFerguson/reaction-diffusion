@@ -234,9 +234,23 @@ impl Component for ReactionDiffusion {
 
             let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "F");
             gl.uniform1f(loc.as_ref(), FEED_KILL_PAIRS[i]);
+            self.reaction_diffusion_ui.borrow().set_feed_slider_value(FEED_KILL_PAIRS[i] as f64);
 
             let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "K");
             gl.uniform1f(loc.as_ref(), FEED_KILL_PAIRS[i + 1]);
+            self.reaction_diffusion_ui.borrow().set_kill_slider_value(FEED_KILL_PAIRS[i + 1] as f64);
+        }
+
+        if self.reaction_diffusion_ui.borrow().feed_slider_value_changed() {
+            gl.use_program(Some(&self.reaction_diffusion));
+            let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "F");
+            gl.uniform1f(loc.as_ref(), self.reaction_diffusion_ui.borrow().feed_slider_value() as f32);
+        }
+
+        if self.reaction_diffusion_ui.borrow().kill_slider_value_changed() {
+            gl.use_program(Some(&self.reaction_diffusion));
+            let loc = gl.get_uniform_location(self.reaction_diffusion.as_ref(), "K");
+            gl.uniform1f(loc.as_ref(), self.reaction_diffusion_ui.borrow().kill_slider_value() as f32);
         }
 
         if app.input().get_button_down(Left) || app.input().get_button(Left) && app.input().mouse_delta_position() != (0, 0) {

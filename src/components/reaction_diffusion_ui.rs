@@ -5,12 +5,18 @@ use crate::Component;
 use crate::engine::app::App;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::HtmlElement;
+use web_sys::{Event, HtmlElement, HtmlInputElement};
 
 pub struct ReactionDiffusionUI {
     callbacks: Vec<Closure<dyn FnMut()>>,
     clear_button: Rc<RefCell<bool>>,
     random_preset_button: Rc<RefCell<bool>>,
+    feed_slider: Option<Rc<HtmlInputElement>>,
+    feed_slider_value: Rc<RefCell<f64>>,
+    last_feed_slider_value: Rc<RefCell<f64>>,
+    kill_slider: Option<Rc<HtmlInputElement>>,
+    kill_slider_value: Rc<RefCell<f64>>,
+    last_kill_slider_value: Rc<RefCell<f64>>,
 }
 
 impl ReactionDiffusionUI {
@@ -20,6 +26,12 @@ impl ReactionDiffusionUI {
             // on_click_clear_functions: Rc::new(RefCell::new(Vec::new())),
             clear_button: Rc::new(RefCell::new(false)),
             random_preset_button: Rc::new(RefCell::new(false)),
+            feed_slider: None,
+            feed_slider_value: Rc::new(RefCell::new(0.0)),
+            last_feed_slider_value: Rc::new(RefCell::new(0.0)),
+            kill_slider: None,
+            kill_slider_value: Rc::new(RefCell::new(0.0)),
+            last_kill_slider_value: Rc::new(RefCell::new(0.0)),
         };
     }
 }
@@ -36,6 +48,14 @@ impl ReactionDiffusionUI {
     pub fn random_preset_button(&self) -> bool {
         return *self.random_preset_button.borrow();
     }
+
+    pub fn feed_slider_value(&self) -> f64 { *self.feed_slider_value.borrow() }
+    pub fn set_feed_slider_value(&self, value: f64) { self.feed_slider.as_ref().unwrap().set_value_as_number(value); }
+    pub fn feed_slider_value_changed(&self) -> bool { *self.feed_slider_value.borrow() !=  *self.last_feed_slider_value.borrow() }
+
+    pub fn kill_slider_value(&self) -> f64 { *self.kill_slider_value.borrow() }
+    pub fn set_kill_slider_value(&self, value: f64) { self.kill_slider.as_ref().unwrap().set_value_as_number(value); }
+    pub fn kill_slider_value_changed(&self) -> bool { *self.kill_slider_value.borrow() !=  *self.last_kill_slider_value.borrow() }
 }
 
 impl Component for ReactionDiffusionUI {
@@ -73,30 +93,54 @@ impl Component for ReactionDiffusionUI {
         label.set_inner_text("Feed rate");
         controls.append_child(&label).unwrap();
 
-        let input = app.document().create_element("input").unwrap().dyn_into::<HtmlElement>().unwrap();
-        input.set_id("feed-input");
-        input.set_attribute("type", "range").unwrap();
-        input.set_attribute("min", "0").unwrap();
-        input.set_attribute("max", "0.1").unwrap();
-        input.set_attribute("step", "0.001").unwrap();
-        input.set_attribute("value", "0.055").unwrap();
-        input.style().set_property("width", "calc(100% - 5px)").unwrap();
-        controls.append_child(&input).unwrap();
+        let feed_slider = app.document().create_element("input").unwrap().dyn_into::<HtmlInputElement>().unwrap();
+        feed_slider.set_id("feed-input");
+        feed_slider.set_attribute("type", "range").unwrap();
+        feed_slider.set_attribute("min", "0").unwrap();
+        feed_slider.set_attribute("max", "0.1").unwrap();
+        feed_slider.set_attribute("step", "0.001").unwrap();
+        feed_slider.set_attribute("value", "0.055").unwrap();
+        feed_slider.style().set_property("width", "calc(100% - 5px)").unwrap();
+        controls.append_child(&feed_slider).unwrap();
+
+        let feed_slider = Rc::new(feed_slider);
+        let feed_slider_inner = Rc::clone(&feed_slider);
+        self.feed_slider = Some(Rc::clone(&feed_slider));
+
+        let feed_slider_value = Rc::clone(&self.feed_slider_value);
+        *feed_slider_value.borrow_mut() = feed_slider.value_as_number();
+        let callback = Closure::<dyn FnMut()>::new(move || {
+            *feed_slider_value.borrow_mut() = feed_slider_inner.value_as_number();
+        });
+        feed_slider.add_event_listener_with_callback("input", callback.as_ref().unchecked_ref()).unwrap();
+        self.callbacks.push(callback);
 
         let label = app.document().create_element("label").unwrap().dyn_into::<HtmlElement>().unwrap();
         label.set_attribute("for", "kill-input").unwrap();
         label.set_inner_text("Kill rate");
         controls.append_child(&label).unwrap();
 
-        let input = app.document().create_element("input").unwrap().dyn_into::<HtmlElement>().unwrap();
-        input.set_id("kill-input");
-        input.set_attribute("type", "range").unwrap();
-        input.set_attribute("min", "0").unwrap();
-        input.set_attribute("max", "0.1").unwrap();
-        input.set_attribute("step", "0.001").unwrap();
-        input.set_attribute("value", "0.062").unwrap();
-        input.style().set_property("width", "calc(100% - 5px)").unwrap();
-        controls.append_child(&input).unwrap();
+        let kill_slider = app.document().create_element("input").unwrap().dyn_into::<HtmlInputElement>().unwrap();
+        kill_slider.set_id("kill-input");
+        kill_slider.set_attribute("type", "range").unwrap();
+        kill_slider.set_attribute("min", "0").unwrap();
+        kill_slider.set_attribute("max", "0.1").unwrap();
+        kill_slider.set_attribute("step", "0.001").unwrap();
+        kill_slider.set_attribute("value", "0.062").unwrap();
+        kill_slider.style().set_property("width", "calc(100% - 5px)").unwrap();
+        controls.append_child(&kill_slider).unwrap();
+
+        let kill_slider = Rc::new(kill_slider);
+        let kill_slider_inner = Rc::clone(&kill_slider);
+        self.kill_slider = Some(Rc::clone(&kill_slider));
+
+        let kill_slider_value = Rc::clone(&self.kill_slider_value);
+        *kill_slider_value.borrow_mut() = kill_slider.value_as_number();
+        let callback = Closure::<dyn FnMut()>::new(move || {
+            *kill_slider_value.borrow_mut() = kill_slider_inner.value_as_number();
+        });
+        kill_slider.add_event_listener_with_callback("input", callback.as_ref().unchecked_ref()).unwrap();
+        self.callbacks.push(callback);
 
         let button = app.document().create_element("button").unwrap().dyn_into::<HtmlElement>().unwrap();
         button.set_attribute("type", "button").unwrap();
@@ -128,6 +172,8 @@ impl Component for ReactionDiffusionUI {
     }
 
     fn on_late_update(&mut self, app: &App) {
+        *self.last_feed_slider_value.borrow_mut() = *self.feed_slider_value.borrow_mut();
+        *self.last_kill_slider_value.borrow_mut() = *self.kill_slider_value.borrow_mut();
         *self.clear_button.borrow_mut() = false;
         *self.random_preset_button.borrow_mut() = false;
     }

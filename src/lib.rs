@@ -6,6 +6,7 @@ use crate::engine::game_object::GameObject;
 use crate::utils::create_shader_program;
 use crate::components::reaction_diffusion::ReactionDiffusion;
 use crate::components::reaction_diffusion_ui::ReactionDiffusionUI;
+use crate::components::fps_tracker::FPSTracker;
 
 #[macro_use]
 mod utils;
@@ -25,6 +26,7 @@ pub fn start() -> Result<(), JsValue> {
 
     let mut game_manager = GameObject::new();
 
+    // game_manager.add_component(FPSTracker::new(), &app);
     game_manager.add_component(ClearCanvas::new(), &app);
     game_manager.add_component(ReactionDiffusionUI::new(), &app);
     game_manager.add_component(ReactionDiffusion::new(&app), &app);

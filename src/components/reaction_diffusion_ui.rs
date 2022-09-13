@@ -23,7 +23,6 @@ impl ReactionDiffusionUI {
     pub fn new() -> Self {
         return Self {
             callbacks: Vec::new(),
-            // on_click_clear_functions: Rc::new(RefCell::new(Vec::new())),
             clear_button: Rc::new(RefCell::new(false)),
             random_preset_button: Rc::new(RefCell::new(false)),
             feed_slider: None,
@@ -37,10 +36,6 @@ impl ReactionDiffusionUI {
 }
 
 impl ReactionDiffusionUI {
-    // pub fn add_clear_click_callback(&self, callback: impl FnMut() + 'static) {
-    //     self.on_click_clear_functions.borrow_mut().push(Box::new(callback));
-    // }
-
     pub fn clear_button(&self) -> bool {
         return *self.clear_button.borrow();
     }

@@ -5,7 +5,6 @@ use crate::engine::game_object::GameObject;
 use crate::utils::create_shader_program;
 use crate::components::reaction_diffusion::ReactionDiffusion;
 use crate::components::reaction_diffusion_ui::ReactionDiffusionUI;
-use crate::components::fps_tracker::FPSTracker;
 use crate::rendering::camera::Camera;
 
 #[macro_use]
@@ -29,7 +28,6 @@ pub fn start() -> Result<(), JsValue> {
     app.add_game_object(camera);
 
     let mut game_manager = GameObject::new();
-    // game_manager.add_component(FPSTracker::new(), &app);
     game_manager.add_component(ReactionDiffusionUI::new(), &app);
     game_manager.add_component(ReactionDiffusion::new(&app), &app);
     app.add_game_object(game_manager);

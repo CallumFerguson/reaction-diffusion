@@ -339,13 +339,15 @@ impl Component for ReactionDiffusion {
         gl.viewport(0, 0, app.screen().width(), app.screen().height());
     }
 
-    fn on_render(&mut self, game_object: &mut GameObject, app: &App) {
+    fn draw(&mut self, game_object: &mut GameObject, app: &App) {
         let gl = app.gl();
 
         gl.bind_vertex_array(self.render_texture_vao.as_ref());
         gl.use_program(Some(&self.basic_bicubic));
 
         gl.draw_elements_with_i32(WebGl2RenderingContext::TRIANGLES, self.indices_count, WebGl2RenderingContext::UNSIGNED_SHORT, 0);
+
+        self.reaction_diffusion_ui.as_ref().unwrap().upgrade().unwrap().borrow_mut().draw(game_object, app);
     }
 }
 

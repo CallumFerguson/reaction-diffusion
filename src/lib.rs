@@ -1,12 +1,12 @@
 use wasm_bindgen::prelude::*;
 use console_error_panic_hook::hook;
-use crate::components::clear_canvas::ClearCanvas;
 use crate::engine::component::Component;
 use crate::engine::game_object::GameObject;
 use crate::utils::create_shader_program;
 use crate::components::reaction_diffusion::ReactionDiffusion;
 use crate::components::reaction_diffusion_ui::ReactionDiffusionUI;
 use crate::components::fps_tracker::FPSTracker;
+use crate::rendering::camera::Camera;
 
 #[macro_use]
 mod utils;
@@ -24,13 +24,14 @@ pub fn start() -> Result<(), JsValue> {
     app_ref.borrow_mut().init_gl();
     let app = app_ref.borrow();
 
-    let mut game_manager = GameObject::new();
+    let mut camera = GameObject::new();
+    camera.add_component(Camera::new(), &app);
+    app.add_game_object(camera);
 
+    let mut game_manager = GameObject::new();
     // game_manager.add_component(FPSTracker::new(), &app);
-    game_manager.add_component(ClearCanvas::new(), &app);
     game_manager.add_component(ReactionDiffusionUI::new(), &app);
     game_manager.add_component(ReactionDiffusion::new(&app), &app);
-
     app.add_game_object(game_manager);
 
     Ok(())

@@ -1,9 +1,9 @@
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::Closure;
 use web_sys::{Document, HtmlCanvasElement, HtmlElement, WebGl2RenderingContext};
-use crate::{ClearCanvas, Component, GameObject, ReactionDiffusionUI};
+use crate::{Component, GameObject};
 use crate::engine::app::input::Input;
 use crate::engine::app::screen::Screen;
 use crate::engine::app::time::Time;
@@ -15,7 +15,7 @@ pub mod time;
 pub struct App {
     canvas: HtmlCanvasElement,
     gl: Option<WebGl2RenderingContext>,
-    game_objects: RefCell<Vec<GameObject>>,
+    game_objects: RefCell<Vec<Rc<RefCell<GameObject>>>>,
     game_objects_to_be_added: RefCell<Vec<GameObject>>,
     document: Document,
     body: HtmlElement,
@@ -121,57 +121,52 @@ impl App {
                     let mut game_objects_to_be_added = app.game_objects_to_be_added.borrow_mut();
                     let mut game_objects = app.game_objects.borrow_mut();
                     while game_objects_to_be_added.len() > 0 {
-                        game_objects.push(game_objects_to_be_added.pop().unwrap());
+                        game_objects.push(Rc::new(RefCell::new(game_objects_to_be_added.pop().unwrap())));
                     }
                 }
 
                 let game_objects_len = app.game_objects.borrow().len();
 
                 for i in 0..game_objects_len {
-                    let components = app.game_objects.borrow_mut()[i].components();
-                    ;
+                    let components = app.game_objects.borrow()[i].borrow().components();
                     for component in components.borrow_mut().iter_mut() {
-                        let game_object = &mut app.game_objects.borrow_mut()[i];
+                        let game_object = &app.game_objects.borrow()[i];
                         if !component.had_first_update() {
-                            component.component().borrow_mut().on_first_update(game_object, &app);
+                            component.component().borrow_mut().on_first_update(&mut game_object.borrow_mut(), &app);
                             component.set_had_first_update();
                         }
                     }
                 }
 
                 for i in 0..game_objects_len {
-                    let components = app.game_objects.borrow_mut()[i].components();
-                    ;
+                    let components = app.game_objects.borrow()[i].borrow().components();
                     for component in components.borrow_mut().iter_mut() {
-                        let game_object = &mut app.game_objects.borrow_mut()[i];
-                        component.component().borrow_mut().on_update(game_object, &app);
+                        let game_object = &app.game_objects.borrow()[i];
+                        component.component().borrow_mut().on_update(&mut game_object.borrow_mut(), &app);
                     }
                 }
 
                 for i in 0..game_objects_len {
-                    let components = app.game_objects.borrow_mut()[i].components();
-                    ;
+                    let components = app.game_objects.borrow()[i].borrow().components();
                     for component in components.borrow_mut().iter_mut() {
-                        let game_object = &mut app.game_objects.borrow_mut()[i];
-                        component.component().borrow_mut().on_pre_render(game_object, &app);
+                        let game_object = &app.game_objects.borrow()[i];
+                        component.component().borrow_mut().on_pre_render(&mut game_object.borrow_mut(), &app);
                     }
                 }
 
                 for i in 0..game_objects_len {
-                    let components = app.game_objects.borrow_mut()[i].components();
-                    ;
+                    let components = app.game_objects.borrow()[i].borrow().components();
                     for component in components.borrow_mut().iter_mut() {
-                        let game_object = &mut app.game_objects.borrow_mut()[i];
-                        component.component().borrow_mut().on_render(game_object, &app);
+                        let game_object = &app.game_objects.borrow()[i];
+                        component.component().borrow_mut().on_render(&mut game_object.borrow_mut(), &app);
                     }
                 }
 
                 for i in 0..game_objects_len {
-                    let components = app.game_objects.borrow_mut()[i].components();
-                    ;
+                    let components = app.game_objects.borrow()[i].borrow().components();
                     for component in components.borrow_mut().iter_mut() {
-                        let game_object = &mut app.game_objects.borrow_mut()[i];
-                        component.component().borrow_mut().on_late_update(game_object, &app);
+                        let game_object = &app.game_objects.borrow()[i];
+                        component.component().borrow_mut().on_late_update(&mut game_object.borrow_mut(), &app);
                     }
                 }
             }
@@ -204,6 +199,8 @@ impl App {
     pub fn input(&self) -> &Input { &self.input }
     pub fn screen(&self) -> &Screen { &self.screen }
     pub fn time(&self) -> &Time { &self.time }
+
+    pub fn game_objects(&self) -> Ref<Vec<Rc<RefCell<GameObject>>>> { self.game_objects.borrow() }
 
     pub fn canvas(&self) -> &HtmlCanvasElement {
         return &self.canvas;

@@ -63,7 +63,7 @@ impl Component for Square {
         }
     }
 
-    fn on_render(&mut self, game_object: &mut GameObject, app: &App) {
+    fn draw(&mut self, game_object: &mut GameObject, app: &App) {
         let gl = app.gl();
 
         gl.bind_vertex_array(self.vao.as_ref());

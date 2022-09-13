@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use web_sys::WebGl2RenderingContext;
 use crate::{Component, GameObject};
 use crate::engine::app::App;
@@ -30,9 +29,12 @@ impl Component for Camera {
             }
         }
 
-        // let components = game_object.components();
-        // for component in components.borrow_mut().iter_mut() {
-        //     // component.component().borrow_mut().draw(game_object, &app);
-        // }
+        let components = game_object.components();
+        for component in components.borrow().iter() {
+            let component = component.component().try_borrow_mut();
+            if component.is_ok() {
+                component.unwrap().draw(game_object, &app);
+            }
+        }
     }
 }

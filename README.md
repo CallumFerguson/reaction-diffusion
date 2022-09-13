@@ -2,6 +2,9 @@
 
 ![screenshot](images/reaction_diffusion.jpg)
 
+## Try it here
+https://callumferguson.github.io/reaction-diffusion/github-page/
+
 ## Setup
 
 1. clone repo

@@ -1,6 +1,6 @@
 # Reaction Diffusion
 
-![screenshot](images/reaction_diffusion.jpg)
+![screenshot](images/reaction_diffusion_update.jpg)
 
 ## Try it here
 https://callumferguson.github.io/reaction-diffusion/github-page/reaction-diffusion/

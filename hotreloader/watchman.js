@@ -6,7 +6,12 @@ import * as watchman from "fb-watchman";
 
 var client = new watchman.Client();
 
-var dir_of_interest = "C:\\Users\\Callum\\Documents\\git\\rust-project\\src";
+import * as path from "path";
+import * as url from 'url';
+
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+
+var dir_of_interest = path.join(__dirname, "..", "src");
 
 export default function watch(change) {
     client.capabilityCheck({optional: [], required: ['relative_root']},

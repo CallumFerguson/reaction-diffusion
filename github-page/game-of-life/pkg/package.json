@@ -1,0 +1,12 @@
+{
+  "name": "rustproject",
+  "version": "0.1.0",
+  "files": [
+    "rustproject_bg.wasm",
+    "rustproject.js",
+    "rustproject.d.ts"
+  ],
+  "module": "rustproject.js",
+  "types": "rustproject.d.ts",
+  "sideEffects": false
+}

@@ -3,7 +3,13 @@
 ![screenshot](images/reaction_diffusion.jpg)
 
 ## Try it here
-https://callumferguson.github.io/reaction-diffusion/github-page/
+https://callumferguson.github.io/reaction-diffusion/github-page/reaction-diffusion/
+
+### Conway's Game of Life
+
+This repository also contains and infinite grid game of life on and [older commit](https://github.com/CallumFerguson/reaction-diffusion/commits/game-of-life)
+
+[Try it here]()
 
 ## Setup
 

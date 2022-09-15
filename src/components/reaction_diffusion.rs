@@ -409,7 +409,7 @@ fn init_quad(gl: &WebGl2RenderingContext, program: &WebGlProgram, vertices: &[f3
     let buffer = gl.create_buffer();
     gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, buffer.as_ref());
 
-    let uv = [0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0];
+    let uv = [0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0];
 
     unsafe {
         let uv_array_buf_view = js_sys::Float32Array::view(&uv);
